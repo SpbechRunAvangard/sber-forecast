@@ -218,3 +218,21 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- правила проекта ---
+# данные и модели
+data/raw/*
+!data/raw/.gitkeep
+*.csv
+!data/sample_*.csv
+*.pkl
+*.cbm
+*.lgb
+*.pt
+
+# jupyter
+.ipynb_checkpoints/
+
+# ide
+.idea/
+.vscode/

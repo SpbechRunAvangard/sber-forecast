@@ -1,0 +1,7 @@
+# Когда определитесь со стеком, зафиксируйте точные версии, например:
+# lightgbm==4.5.0
+fastapi
+uvicorn
+pandas
+numpy
+python-multipart

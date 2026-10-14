@@ -1,0 +1,9 @@
+.git
+.gitignore
+notebooks/
+docs/
+data/raw/
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
