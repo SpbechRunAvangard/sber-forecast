@@ -236,3 +236,5 @@ data/raw/*
 # ide
 .idea/
 .vscode/
+data/processed/ 
+*.parquet 
