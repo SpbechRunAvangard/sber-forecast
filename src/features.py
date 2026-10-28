@@ -43,7 +43,7 @@ def build_features(Q0, ST, c, first_idx, wh_code, cat_code):
         warnings.simplefilter("ignore", RuntimeWarning)
         for w in (30, 90):
             sw = s[:, -w:]
-            zero_share = np.where(np.isnan(sw), np.nan, (sw == 0).astype(np.float32))
+            zero_share = np.where(np.isnan(sw), np.nan, (sw <= 0).astype(np.float32))
             f[f"oos_share_{w}"] = np.nanmean(zero_share, axis=1)
         f["stock_missing_90"] = np.isnan(s[:, -90:]).mean(axis=1)
         f["stock_mean_90"] = np.nanmean(s[:, -90:], axis=1)
