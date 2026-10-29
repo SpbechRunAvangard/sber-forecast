@@ -23,14 +23,12 @@ def clean_stock(df_stock: pd.DataFrame) -> pd.DataFrame:
         stock=("stock", "sum")
     )
     
-    # Зануляем отрицательные остатки
-    df_stock_clean['stock'] = df_stock_clean['stock'].clip(lower=0)
     
     return df_stock_clean
 
 
 def build_full_grid(df_sales: pd.DataFrame, df_stock_clean: pd.DataFrame) -> pd.DataFrame:
-    """Создает полную сетку дат и заполняет остатки"""
+    """Создает полную сетку дат и заполняет остатки (ffill)."""
     keys = ["date", "warehouse_name", "article"]
     
     # Границы дат
@@ -51,8 +49,13 @@ def build_full_grid(df_sales: pd.DataFrame, df_stock_clean: pd.DataFrame) -> pd.
     # Присоединение остатков
     df_stock_daily = full_grid.merge(df_stock_clean, on=keys, how='left')
     
-    # Сортировка и ffill
+    # Сортировка
     df_stock_daily = df_stock_daily.sort_values(['warehouse_name', 'article', 'date'])
+    
+    # Флаг отсутствия данных 
+    df_stock_daily['stock_was_nan'] = df_stock_daily['stock'].isna().astype(int)
+    
+    # Заполнение остатков вперед 
     df_stock_daily['stock'] = (
         df_stock_daily.groupby(['warehouse_name', 'article'])['stock'].ffill()
     )
@@ -60,37 +63,33 @@ def build_full_grid(df_sales: pd.DataFrame, df_stock_clean: pd.DataFrame) -> pd.
     return df_stock_daily
 
 
-def clean_sales(df_sales: pd.DataFrame) -> pd.DataFrame:
-    """Очищает продажи (суммирует департаменты) и сохраняет категории."""
+def clean_sales(df_sales: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Очищает продажи, создает справочник категорий и возвращает два DataFrame."""
     keys = ["date", "warehouse_name", "article"]
-    cat_cols = ["cities_name", "category_lvl_1", "category_lvl_2", "category_lvl_3"]
+    cat_cols = ["cities_name", "category_lvl_1", "category_lvl_2"]
     
-    # Чистим пропуски в категориях
-    for col in cat_cols:
-        if col in df_sales.columns:
-            df_sales[col] = df_sales[col].fillna("unknown")
+    # Заменяем null в скидках на 0
+    df_sales["discount_sum"] = df_sales["discount_sum"].fillna(0)
     
-    # Агрегируем департаменты
+    # Строим чистый справочник "артикул -> категория"
+    df_items_directory = df_sales[["article"] + cat_cols].dropna().drop_duplicates(subset=["article"])
+    
+    # Агрегируем департаменты 
     df_sales_clean = (
         df_sales
         .groupby(keys, as_index=False)
         .agg(
-            quantity=("quantity", "sum"),
-            cities_name=("cities_name", "first"),
-            category_lvl_1=("category_lvl_1", "first"),
-            category_lvl_2=("category_lvl_2", "first"),
-            category_lvl_3=("category_lvl_3", "first"),
+            quantity=("quantity", "sum")
         )
     )
     
-    
-    return df_sales_clean
+    return df_sales_clean, df_items_directory
 
 
-def build_final_dataset(df_sales_clean: pd.DataFrame, df_stock_daily: pd.DataFrame) -> pd.DataFrame:
+def build_final_dataset(df_sales_clean: pd.DataFrame, df_stock_daily: pd.DataFrame, df_items_directory: pd.DataFrame) -> pd.DataFrame:
     """Финальный merge"""
     keys = ["date", "warehouse_name", "article"]
-    cat_cols = ["cities_name", "category_lvl_1", "category_lvl_2", "category_lvl_3"]
+    cat_cols = ["cities_name", "category_lvl_1", "category_lvl_2"]
     
     # Присоединяем продажи к сетке стоков
     df_final = df_stock_daily.merge(
@@ -102,22 +101,22 @@ def build_final_dataset(df_sales_clean: pd.DataFrame, df_stock_daily: pd.DataFra
     # Заполняем продажи нулями
     df_final["quantity"] = df_final["quantity"].fillna(0)
     
-    # Заполняем категории "unknown" 
+    # Присоединяем справочник категорий
+    df_final = df_final.merge(df_items_directory, on="article", how="left")
+    
+    # Заполняем категории (и переводим в тип category, как в ноутбуке)
     for col in cat_cols:
-        df_final[col] = df_final[col].fillna("unknown")
+        df_final[col] = df_final[col].fillna("unknown").astype("category")
         
     return df_final
 
 
 def prepare_data_for_api(sales_path: str, stock_path: str) -> pd.DataFrame:
-    """
-    Главная функция для API (Docker-контейнера).
-    Принимает пути к CSV, возвращает готовый DataFrame.
-    """
+    
     df_sales_raw, df_stock_raw = load_raw_data(sales_path, stock_path)
     df_stock_clean = clean_stock(df_stock_raw)
     df_stock_daily = build_full_grid(df_sales_raw, df_stock_clean)
-    df_sales_clean = clean_sales(df_sales_raw)
-    df_final = build_final_dataset(df_sales_clean, df_stock_daily)
+    df_sales_clean, df_items_directory = clean_sales(df_sales_raw)
+    df_final = build_final_dataset(df_sales_clean, df_stock_daily, df_items_directory)
     
     return df_final
