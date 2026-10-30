@@ -1,1354 +1,310 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Forecast" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.52.0">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" id="Definitions_Forecast_v2" targetNamespace="http://bpmn.io/schema/bpmn" exporter="sber-forecast" exporterVersion="2.0">
   <bpmn:collaboration id="Collab_1">
-    <bpmn:participant id="P_main" name="Прогноз продаж: склад × артикул, 64 дня — сквозной пайплайн решения" processRef="Process_Main" />
-    <bpmn:participant id="P_org" name="Организаторы хакатона (ТЗ, данные, автоскоринг score.py)" />
-    <bpmn:messageFlow id="m1" name="ТЗ + sales_dataset_hakaton.csv + stock_dataset_hakaton.csv" sourceRef="P_org" targetRef="Start" />
-    <bpmn:messageFlow id="m2" name="Архив (код + описание + submission.csv) и презентация" sourceRef="End_docs" targetRef="P_org" />
-    <bpmn:messageFlow id="m3" name="Git-репозиторий (★)" sourceRef="End_star" targetRef="P_org" />
-    <bpmn:textAnnotation id="A1">
-      <bpmn:text>ABC: A≈80% / B≈15% / C≈5% накопленного объёма. XYZ: CV недельных продаж, пороги подбираем по данным. Прерывистый спрос: ADI ≥ 1.32 (Syntetos–Boylan).</bpmn:text>
-    </bpmn:textAnnotation>
-    <bpmn:association id="as_A1" sourceRef="S1" targetRef="A1" />
-    <bpmn:textAnnotation id="A2">
-      <bpmn:text>В тесте будущие остатки неизвестны → в модель идут только лаги и последний известный stock (без утечки).</bpmn:text>
-    </bpmn:textAnnotation>
-    <bpmn:association id="as_A2" sourceRef="XOR_om" targetRef="A2" />
-    <bpmn:textAnnotation id="A3">
-      <bpmn:text>SMAPE (50%) считается по каждой серии с равным весом: для редких рядов ошибка «0 против &gt; 0» = 200%, поэтому решение «0 или &gt; 0» критично. Итог — ранговая нормализация.</bpmn:text>
-    </bpmn:textAnnotation>
-    <bpmn:association id="as_A3" sourceRef="EVAL" targetRef="A3" />
-    <bpmn:textAnnotation id="A4">
-      <bpmn:text>Состав: 11 складов × 799 артикулов × 64 дня = 562 496 строк; даты подряд; без NaN и отрицательных; прогноз детерминирован.</bpmn:text>
-    </bpmn:textAnnotation>
-    <bpmn:association id="as_A4" sourceRef="POST" targetRef="A4" />
-    <bpmn:group id="G_eda" categoryValueRef="CV_G_eda" />
-    <bpmn:group id="G_seg" categoryValueRef="CV_G_seg" />
-    <bpmn:group id="G_stock" categoryValueRef="CV_G_stock" />
-    <bpmn:group id="G_mod" categoryValueRef="CV_G_mod" />
+    <bpmn:participant id="P_org" name="Организаторы хакатона: ТЗ, данные, скоринг" />
+    <bpmn:participant id="P_main" name="Команда «Авангард»: итоговый процесс решения sber-forecast" processRef="Process_Main" />
+    <bpmn:messageFlow id="m1" name="ТЗ (ред. 25.10), sales, stock" sourceRef="P_org" targetRef="Start" />
+    <bpmn:messageFlow id="m2" name="Архив и презентация" sourceRef="End_docs" targetRef="P_org" />
+    <bpmn:messageFlow id="m3" name="Git-репозиторий ★" sourceRef="End_star" targetRef="P_org" />
+    <bpmn:textAnnotation id="A_1"><bpmn:text>Ориентир score на 4 периодах: v6 — 0,785, первая версия — 0,807, простое правило — 0,816. Ожидаемый ранговый score на лидерборде ≈ 0,17 (3-е место).</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="as_A_1" sourceRef="G_q" targetRef="A_1" />
+    <bpmn:textAnnotation id="A_2"><bpmn:text>Риск: на сезонных неделях прогноз даёт 81% фактического объёма (до обнуления 94%). Август — пик.</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="as_A_2" sourceRef="M_season" targetRef="A_2" />
+    <bpmn:textAnnotation id="A_3"><bpmn:text>Ориентир score — min-max к «последнему значению» с весами ТЗ (меньше — лучше). Жюри использует ранговую нормировку, поэтому это ориентир, а не итоговый балл.</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="as_A_3" sourceRef="M_base" targetRef="A_3" />
   </bpmn:collaboration>
-  <bpmn:dataStore id="DataStore_panel" name="Панельный датасет" />
-  <bpmn:process id="Process_Main" name="Пайплайн прогноза продаж" isExecutable="false">
+  <bpmn:process id="Process_Main" name="Итоговый процесс прогноза" isExecutable="false">
     <bpmn:laneSet id="LaneSet_1">
-      <bpmn:lane id="L5" name="★ DevOps (опционально): Docker + FastAPI">
-        <bpmn:flowNodeRef>XOR_s</bpmn:flowNodeRef>
+      <bpmn:lane id="L0" name="Данные: очистка и сетка (Елена)">
+        <bpmn:flowNodeRef>Start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>T_load</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>T_clean</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>T_grid</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="L1" name="Аналитика: EDA, сегменты, остатки">
+        <bpmn:flowNodeRef>A_eda</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>A_stock</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>A_conc</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="L2" name="ML: модель, валидация, прогноз (Никита)">
+        <bpmn:flowNodeRef>M_base</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>M_feat</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>M_train</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>M_thr</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>M_season</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G_q</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>M_final</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>M_sub</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G_v</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>M_art</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>PG</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="L3" name="Документация и бизнес">
+        <bpmn:flowNodeRef>D_desc</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>D_pres</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>D_zip</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_docs</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="L4" name="★ Контейнер: Docker + FastAPI">
         <bpmn:flowNodeRef>K1</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>K2</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>K3</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>End_star</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>End_ns</bpmn:flowNodeRef>
-      </bpmn:lane>
-      <bpmn:lane id="L4" name="Документация и бизнес: описание решения, презентация">
-        <bpmn:flowNodeRef>D1</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PGj</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>D3</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>D2</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PG9</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>D4</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>End_docs</bpmn:flowNodeRef>
-      </bpmn:lane>
-      <bpmn:lane id="L3" name="ML-инженер: признаки, модели, прогноз, submission">
-        <bpmn:flowNodeRef>FE</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>VAL</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PG5</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>M_BASE</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>M_H</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>M_R</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>M_S</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PG6</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>BLEND</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>EVAL</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>XOR_q</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PG8</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>FINAL</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PG10</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>POST</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>XOR_v</bpmn:flowNodeRef>
-      </bpmn:lane>
-      <bpmn:lane id="L2" name="Аналитик: влияние остатков (stock)">
-        <bpmn:flowNodeRef>O1</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>O2</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>XOR_o</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>O3</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>O4</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>XOR_om</bpmn:flowNodeRef>
-      </bpmn:lane>
-      <bpmn:lane id="L1" name="Аналитик: EDA и сегментация рядов">
-        <bpmn:flowNodeRef>E1</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>E2</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>S1</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PG1</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>ABC</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>XYZ</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PG2</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>XOR1</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>XOR2</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>SEG_R</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>SEG_S</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>SEG_H</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>XOR3</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>FIX</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PG3</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>CROSS</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>CONC</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PG4</bpmn:flowNodeRef>
-      </bpmn:lane>
-      <bpmn:lane id="L0" name="Данные: загрузка, очистка, агрегация">
-        <bpmn:flowNodeRef>Start</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>T_load</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>T_clean</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>T_agg</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>T_join</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>PG0</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
-    <bpmn:startEvent id="Start" name="Получены ТЗ и датасеты">
-      <bpmn:documentation>Старт: организаторы передали ТЗ хакатона и два CSV (sales_dataset_hakaton.csv, stock_dataset_hakaton.csv). Задача: прогноз quantity по паре «склад × артикул» на 64 дня вперёд от последней даты обучающей выборки.</bpmn:documentation>
-      <bpmn:outgoing>f01</bpmn:outgoing>
+    <bpmn:startEvent id="Start" name="Получены ТЗ (ред. 25.10) и данные">
+      <bpmn:outgoing>f_Start_T_load</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:task id="T_load" name="Загрузить два CSV: продажи (sales) и остатки (stock)">
-      <bpmn:documentation>sales: date, composite_division, cities_name, warehouse_name, category_lvl_1..3, article, characteristic, quantity, sales_sum, cost_price, discount_sum, volume_weight. stock: date, warehouse_name, char_article (= article), stock.</bpmn:documentation>
-      <bpmn:incoming>f01</bpmn:incoming>
-      <bpmn:outgoing>f02</bpmn:outgoing>
-      <bpmn:property id="Property_17gt313" name="__targetRef_placeholder" />
-      <bpmn:dataInputAssociation id="da1">
-        <bpmn:sourceRef>DO_sales_ref</bpmn:sourceRef>
-        <bpmn:targetRef>Property_17gt313</bpmn:targetRef>
-      </bpmn:dataInputAssociation>
-      <bpmn:dataInputAssociation id="da2">
-        <bpmn:sourceRef>DO_stock_ref</bpmn:sourceRef>
-        <bpmn:targetRef>Property_17gt313</bpmn:targetRef>
-      </bpmn:dataInputAssociation>
+    <bpmn:task id="T_load" name="Загрузить sales и stock, отрезать всё после 26.07.2026">
+      <bpmn:documentation>По ТЗ от 25.10 для обучения и признаков разрешены данные только по 2026-07-26 включительно. sales_sum и discount_sum переводятся из np.log через np.exp перед суммированием; в признаки идут только отношения.</bpmn:documentation>
+      <bpmn:incoming>f_Start_T_load</bpmn:incoming>
+      <bpmn:outgoing>f_T_load_T_clean</bpmn:outgoing>
+      <bpmn:property id="prop_DO_raw" name="__targetRef_placeholder" />
+      <bpmn:dataInputAssociation id="dia_DO_raw"><bpmn:sourceRef>DO_raw_ref</bpmn:sourceRef><bpmn:targetRef>prop_DO_raw</bpmn:targetRef></bpmn:dataInputAssociation>
     </bpmn:task>
-    <bpmn:task id="T_clean" name="Проверить и очистить: типы, даты, дубли, NaN, отрицательные значения, article ↔ char_article">
-      <bpmn:documentation>Контроль качества: формат дат YYYY-MM-DD, дубликаты строк, пропуски, отрицательные quantity/stock, совпадение справочника article и char_article, список из 11 складов и 799 артикулов.</bpmn:documentation>
-      <bpmn:incoming>f02</bpmn:incoming>
-      <bpmn:outgoing>f03</bpmn:outgoing>
+    <bpmn:task id="T_clean" name="Продажи — сумма по департаментам; остатки — сумма всех дублей, минус = резерв">
+      <bpmn:documentation>stock — остаток на начало дня. Все строки с одинаковыми date × склад × артикул складываются (6,15 млн → 4,88 млн ключей), отрицательные значения допустимы.</bpmn:documentation>
+      <bpmn:incoming>f_T_load_T_clean</bpmn:incoming>
+      <bpmn:outgoing>f_T_clean_T_grid</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="T_agg" name="Агрегировать до date × склад × артикул (сумма по департаментам), достроить сетку, пропуски = 0">
-      <bpmn:documentation>Согласно ТЗ все composite_division суммируются в рамках пары «склад — товар». Полная сетка дат × 11 складов × 799 артикулов; отсутствие строки = нулевые продажи. Дополнительно агрегируются sales_sum, discount_sum (сумма), cost_price (среднее/медиана), volume_weight.</bpmn:documentation>
-      <bpmn:incoming>f03</bpmn:incoming>
-      <bpmn:outgoing>f04</bpmn:outgoing>
+    <bpmn:task id="T_grid" name="Сетка 11 × 799 по дням: нет продаж → 0, нет остатка → NaN">
+      <bpmn:documentation>8 789 рядов, 13.12.2023 — 26.07.2026. Недели прогноза начинаются с понедельника.</bpmn:documentation>
+      <bpmn:incoming>f_T_clean_T_grid</bpmn:incoming>
+      <bpmn:outgoing>f_T_grid_A_eda</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="doa_DS_grid"><bpmn:targetRef>DS_grid_ref</bpmn:targetRef></bpmn:dataOutputAssociation>
     </bpmn:task>
-    <bpmn:task id="T_join" name="Присоединить остатки: (date, склад, article = char_article); пропуски stock — флаг">
-      <bpmn:documentation>Левое соединение панели продаж с остатками. Пропуск stock не заполняется молча: заводится флаг «остаток неизвестен».</bpmn:documentation>
-      <bpmn:incoming>f04</bpmn:incoming>
-      <bpmn:outgoing>f05</bpmn:outgoing>
-      <bpmn:dataOutputAssociation id="da3">
-        <bpmn:targetRef>DS_panel_ref</bpmn:targetRef>
-      </bpmn:dataOutputAssociation>
+    <bpmn:task id="A_eda" name="EDA и сегментация ABC/XYZ: ходовые, сезонные, редкие">
+      <bpmn:documentation>Ходовые 8,6% рядов / 57% объёма; сезонные 2,1% / 4%; редкие 89% / 39%; 40 рядов без продаж. Август — пик в горизонте прогноза.</bpmn:documentation>
+      <bpmn:incoming>f_T_grid_A_eda</bpmn:incoming>
+      <bpmn:outgoing>f_A_eda_A_stock</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="doa_DO_seg"><bpmn:targetRef>DO_seg_ref</bpmn:targetRef></bpmn:dataOutputAssociation>
     </bpmn:task>
-    <bpmn:parallelGateway id="PG0">
-      <bpmn:incoming>f05</bpmn:incoming>
-      <bpmn:outgoing>f06</bpmn:outgoing>
-      <bpmn:outgoing>f07</bpmn:outgoing>
-    </bpmn:parallelGateway>
-    <bpmn:task id="E1" name="EDA (время): динамика, тренд, сезонность неделя / месяц / год, выбросы, доля нулевых дней">
-      <bpmn:documentation>Агрегированные ряды по дням/неделям/месяцам, STL-декомпозиция, автокорреляция на лагах 7/30/365, поиск выбросов и пропущенных периодов, доля нулевых дней по сериям.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_eda</bpmn:categoryValueRef>
-      <bpmn:incoming>f06</bpmn:incoming>
-      <bpmn:outgoing>f08</bpmn:outgoing>
+    <bpmn:task id="A_stock" name="Остатки: ~63% дней без продаж — остаток на начало дня ≤ 0">
+      <bpmn:documentation>Среди дней без продаж с известным остатком в 63,4% остаток на начало дня ≤ 0. По 47% таких дней остаток неизвестен; 30% объёма продано при остатке ≤ 0 (резерв).</bpmn:documentation>
+      <bpmn:incoming>f_A_eda_A_stock</bpmn:incoming>
+      <bpmn:outgoing>f_A_stock_A_conc</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="E2" name="EDA (срезы): склады, города, категории lvl 1–3, департаменты, цена, скидка, объёмный вес">
-      <bpmn:documentation>Сравнение складов и городов, структура категорий lvl1–3, вклад департаментов, связь quantity с ценой (cost_price), скидкой (discount_sum), объёмным весом.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_eda</bpmn:categoryValueRef>
-      <bpmn:incoming>f08</bpmn:incoming>
-      <bpmn:outgoing>f09</bpmn:outgoing>
+    <bpmn:task id="A_conc" name="Вывод: остаток — признак модели, а не жёсткое правило «нет товара → 0»">
+      <bpmn:incoming>f_A_stock_A_conc</bpmn:incoming>
+      <bpmn:outgoing>f_A_conc_M_base</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="S1" name="Метрики рядов: объём, средний спрос, ADI, CV², CV недельных продаж, сила сезонности">
-      <bpmn:documentation>Для каждой из 11×799 серий: суммарный объём и выручка, средний спрос, ADI (средний интервал между продажами), CV² ненулевых размеров, CV недельных продаж, сила сезонности по STL.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f09</bpmn:incoming>
-      <bpmn:outgoing>f10</bpmn:outgoing>
+    <bpmn:task id="M_base" name="Метрики score.py, простые прогнозы, 4 периода проверки по 9 недель">
+      <bpmn:documentation>Недели с 25.05, 23.03, 19.01.2026 и сезонные 28.07.2025. Простое правило (среднее за 13 недель): 0,816 в среднем.</bpmn:documentation>
+      <bpmn:incoming>f_A_conc_M_base</bpmn:incoming>
+      <bpmn:outgoing>f_M_base_M_feat</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:parallelGateway id="PG1">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f10</bpmn:incoming>
-      <bpmn:outgoing>f11_ABC</bpmn:outgoing>
-      <bpmn:outgoing>f11_XYZ</bpmn:outgoing>
-    </bpmn:parallelGateway>
-    <bpmn:task id="ABC" name="ABC-анализ: вклад серии в объём и выручку (A ≈ 80%, B ≈ 15%, C ≈ 5%)">
-      <bpmn:documentation>Ранжирование серий по убыванию вклада в quantity (и sales_sum), накопленная доля: A — первые ~80%, B — следующие ~15%, C — оставшиеся ~5%. Границы настраиваются.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f11_ABC</bpmn:incoming>
-      <bpmn:outgoing>f12_ABC</bpmn:outgoing>
+    <bpmn:task id="M_feat" name="≈80 признаков: ряд, недели, прошлый год, артикул по всем складам, цена и скидка, остатки">
+      <bpmn:documentation>Базовые 22 признака ряда + недельные и сезонные + уровень артикула по всем складам, склада, категории×склада, относительная цена и доля скидки, динамика остатков.</bpmn:documentation>
+      <bpmn:incoming>f_M_base_M_feat</bpmn:incoming>
+      <bpmn:incoming>f_G_q_M_feat</bpmn:incoming>
+      <bpmn:outgoing>f_M_feat_M_train</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="XYZ" name="XYZ-анализ: коэффициент вариации спроса (X — стабильный, Y — колеблющийся, Z — нерегулярный)">
-      <bpmn:documentation>CV = σ/μ по недельным (при необходимости дневным) продажам серии. Пороги X/Y/Z подбираются по фактическому распределению CV: классические 10%/25% рассчитаны на месячные данные.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f11_XYZ</bpmn:incoming>
-      <bpmn:outgoing>f12_XYZ</bpmn:outgoing>
+    <bpmn:task id="M_train" name="Две модели LightGBM Tweedie (22 и все признаки): среднее × сезон^0,5 × 0,9">
+      <bpmn:documentation>Цель — средние недельные продажи за 9 недель; сезон — продажи тех же недель год назад к уровню 90 дней до них. Округление до целых.</bpmn:documentation>
+      <bpmn:incoming>f_M_feat_M_train</bpmn:incoming>
+      <bpmn:outgoing>f_M_train_M_thr</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:parallelGateway id="PG2">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f12_ABC</bpmn:incoming>
-      <bpmn:incoming>f12_XYZ</bpmn:incoming>
-      <bpmn:outgoing>f13</bpmn:outgoing>
-    </bpmn:parallelGateway>
-    <bpmn:exclusiveGateway id="XOR1" name="Редкий ряд? (ADI ≥ 1.32 или мало продаж / короткая история)" default="f15">
-      <bpmn:documentation>Порог ADI ≥ 1.32 — классическое разделение прерывистого спроса по Syntetos–Boylan. Дополнительно можно учитывать долю нулевых дней и длину истории.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f13</bpmn:incoming>
-      <bpmn:outgoing>f14</bpmn:outgoing>
-      <bpmn:outgoing>f15</bpmn:outgoing>
+    <bpmn:task id="M_thr" name="Решение «0 или уровень»: модель ожидаемого выигрыша SMAPE">
+      <bpmn:documentation>Третья модель LightGBM оценивает SMAPE(0) − SMAPE(уровень). Ненулевой прогноз, если выигрыш &gt; 0 и уровень ≥ 0,5. SMAPE 134,6 → 59,4.</bpmn:documentation>
+      <bpmn:incoming>f_M_train_M_thr</bpmn:incoming>
+      <bpmn:outgoing>f_M_thr_M_season</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="M_season" name="Сезонный период 28.07–22.09.2025 — те же недели годом раньше">
+      <bpmn:documentation>Прогноз / факт объёма: 0,94 до обнуления, 0,81 после → в пик объём занижен.</bpmn:documentation>
+      <bpmn:incoming>f_M_thr_M_season</bpmn:incoming>
+      <bpmn:outgoing>f_M_season_G_q</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G_q" name="Лучше простого правила?">
+      <bpmn:incoming>f_M_season_G_q</bpmn:incoming>
+      <bpmn:outgoing>f_G_q_M_final</bpmn:outgoing>
+      <bpmn:outgoing>f_G_q_M_feat</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:exclusiveGateway id="XOR2" name="Выраженная сезонность?" default="f17">
-      <bpmn:documentation>Критерий: сила сезонности (STL) выше порога и/или значимая автокорреляция на сезонных лагах (7, 30, 365 дней).</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f15</bpmn:incoming>
-      <bpmn:outgoing>f16</bpmn:outgoing>
-      <bpmn:outgoing>f17</bpmn:outgoing>
+    <bpmn:task id="M_final" name="Финальное обучение по 26.07: три модели, детерминированно">
+      <bpmn:documentation>896 тыс. строк обучения; повторный запуск даёт тот же файл.</bpmn:documentation>
+      <bpmn:incoming>f_G_q_M_final</bpmn:incoming>
+      <bpmn:incoming>f_G_v_M_final</bpmn:incoming>
+      <bpmn:outgoing>f_M_final_M_sub</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="M_sub" name="Submission: 9 недель с 27.07.2026, 79 101 строка, целые числа">
+      <bpmn:documentation>week — понедельник; без NaN и отрицательных; 223,4 тыс. шт. — 1,05 от предыдущих 9 недель; 56% рядов — 0.</bpmn:documentation>
+      <bpmn:incoming>f_M_final_M_sub</bpmn:incoming>
+      <bpmn:outgoing>f_M_sub_G_v</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="doa_DO_sub"><bpmn:targetRef>DO_sub_ref</bpmn:targetRef></bpmn:dataOutputAssociation>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G_v" name="Формат верный, результат повторяется?">
+      <bpmn:incoming>f_M_sub_G_v</bpmn:incoming>
+      <bpmn:outgoing>f_G_v_M_art</bpmn:outgoing>
+      <bpmn:outgoing>f_G_v_M_final</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:task id="SEG_R" name="Сегмент РЕДКИЕ (прерывистый спрос)">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f14</bpmn:incoming>
-      <bpmn:outgoing>f18_SEG_R</bpmn:outgoing>
+    <bpmn:task id="M_art" name="weekly_model_v6.py: из сырых CSV тот же submission">
+      <bpmn:documentation>Сверка с экспериментом: расхождение 0 по всем трём моделям.</bpmn:documentation>
+      <bpmn:incoming>f_G_v_M_art</bpmn:incoming>
+      <bpmn:outgoing>f_M_art_PG</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="doa_DO_model"><bpmn:targetRef>DO_model_ref</bpmn:targetRef></bpmn:dataOutputAssociation>
     </bpmn:task>
-    <bpmn:task id="SEG_S" name="Сегмент СЕЗОННЫЕ (выраженная сезонность)">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f16</bpmn:incoming>
-      <bpmn:outgoing>f18_SEG_S</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="SEG_H" name="Сегмент ХОДОВЫЕ (стабильный регулярный спрос)">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f17</bpmn:incoming>
-      <bpmn:outgoing>f18_SEG_H</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:exclusiveGateway id="XOR3">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-      <bpmn:incoming>f18_SEG_R</bpmn:incoming>
-      <bpmn:incoming>f18_SEG_S</bpmn:incoming>
-      <bpmn:incoming>f18_SEG_H</bpmn:incoming>
-      <bpmn:outgoing>f19</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:task id="FIX" name="Зафиксировать сегменты: матрица ABC × XYZ × тип ряда, доля серий и вклад в объём">
-      <bpmn:incoming>f19</bpmn:incoming>
-      <bpmn:outgoing>f20</bpmn:outgoing>
-      <bpmn:dataOutputAssociation id="da4">
-        <bpmn:targetRef>DO_seg_ref</bpmn:targetRef>
-      </bpmn:dataOutputAssociation>
-    </bpmn:task>
-    <bpmn:parallelGateway id="PG3">
-      <bpmn:incoming>f20</bpmn:incoming>
-      <bpmn:incoming>f29</bpmn:incoming>
-      <bpmn:outgoing>f21</bpmn:outgoing>
+    <bpmn:parallelGateway id="PG">
+      <bpmn:incoming>f_M_art_PG</bpmn:incoming>
+      <bpmn:outgoing>f_PG_D_desc</bpmn:outgoing>
+      <bpmn:outgoing>f_PG_K1</bpmn:outgoing>
     </bpmn:parallelGateway>
-    <bpmn:task id="CROSS" name="Кросс-анализ: доля OOS и эффект остатков по сегментам (ABC/XYZ, тип ряда)">
-      <bpmn:documentation>Сводит результаты ветки остатков с сегментацией: какая доля дней без остатка приходится на ходовые / редкие / сезонные ряды и классы ABC/XYZ.</bpmn:documentation>
-      <bpmn:incoming>f21</bpmn:incoming>
-      <bpmn:outgoing>f22</bpmn:outgoing>
+    <bpmn:task id="D_desc" name="Описание решения для архива">
+      <bpmn:incoming>f_PG_D_desc</bpmn:incoming>
+      <bpmn:outgoing>f_D_desc_D_pres</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="doa_DO_doc"><bpmn:targetRef>DO_doc_ref</bpmn:targetRef></bpmn:dataOutputAssociation>
     </bpmn:task>
-    <bpmn:task id="CONC" name="Выводы для модели: признаки, стратегия по сегментам, таргет, валидация, риски">
-      <bpmn:documentation>Итог EDA: перечень признаков, выбор подхода по каждому сегменту, трансформация таргета (log1p), схема валидации, обработка нулей и редких рядов, ограничения (нет будущих остатков).</bpmn:documentation>
-      <bpmn:incoming>f22</bpmn:incoming>
-      <bpmn:outgoing>f23</bpmn:outgoing>
-      <bpmn:dataOutputAssociation id="da5">
-        <bpmn:targetRef>DO_conc_ref</bpmn:targetRef>
-      </bpmn:dataOutputAssociation>
+    <bpmn:task id="D_pres" name="Презентация: v6, проверка, лидерборд, риск августа">
+      <bpmn:incoming>f_D_desc_D_pres</bpmn:incoming>
+      <bpmn:outgoing>f_D_pres_D_zip</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="doa_DO_pres"><bpmn:targetRef>DO_pres_ref</bpmn:targetRef></bpmn:dataOutputAssociation>
     </bpmn:task>
-    <bpmn:parallelGateway id="PG4">
-      <bpmn:incoming>f23</bpmn:incoming>
-      <bpmn:outgoing>f30</bpmn:outgoing>
-      <bpmn:outgoing>f31</bpmn:outgoing>
-    </bpmn:parallelGateway>
-    <bpmn:task id="O1" name="Выявить дни без остатка (stock = 0 / низкий), доля OOS по складам и товарам">
-      <bpmn:documentation>Дни OOS: stock = 0 и низкий остаток (порог — доля от среднего суточного спроса). Доли OOS по складам, артикулам, категориям.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-      <bpmn:incoming>f07</bpmn:incoming>
-      <bpmn:outgoing>f24</bpmn:outgoing>
+    <bpmn:task id="D_zip" name="Собрать архив: код, описание, submission.csv">
+      <bpmn:incoming>f_D_pres_D_zip</bpmn:incoming>
+      <bpmn:outgoing>f_D_zip_End_docs</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="O2" name="Сравнить продажи при stock = 0 и &#62; 0; корреляция stock ↔ quantity (лаги)">
-      <bpmn:documentation>Эффект «нет товара — нет продаж»: средние продажи при stock=0 и stock&gt;0, корреляция quantity с лагами stock, поведение спроса до и после пополнения.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-      <bpmn:incoming>f24</bpmn:incoming>
-      <bpmn:outgoing>f25</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:exclusiveGateway id="XOR_o" name="Остатки значимо влияют на продажи?" default="f27">
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-      <bpmn:incoming>f25</bpmn:incoming>
-      <bpmn:outgoing>f26</bpmn:outgoing>
-      <bpmn:outgoing>f27</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:task id="O3" name="Да: признаки stock (лаги, rolling, дни с OOS, флаг OOS), коррекция цензурированного спроса">
-      <bpmn:documentation>Признаки по остаткам строятся только из прошлых значений. В дни OOS наблюдаемые продажи занижены (цензурированный спрос) — их можно помечать флагом или исключать/корректировать при обучении.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-      <bpmn:incoming>f26</bpmn:incoming>
-      <bpmn:outgoing>f28_O3</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="O4" name="Нет: остаток — слабый признак или не используется">
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-      <bpmn:incoming>f27</bpmn:incoming>
-      <bpmn:outgoing>f28_O4</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:exclusiveGateway id="XOR_om">
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-      <bpmn:incoming>f28_O3</bpmn:incoming>
-      <bpmn:incoming>f28_O4</bpmn:incoming>
-      <bpmn:outgoing>f29</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:task id="FE" name="Признаки: календарь, лаги / rolling, дни без продаж, stock, цена / скидка, категории, сегмент">
-      <bpmn:documentation>Календарные (день недели, месяц, день года, праздники — только из открытого календаря, закрытые внешние данные запрещены), лаги и rolling-статистики (7–56 дней), доля нулей, дни с последней продажи, признаки stock, цена/скидка, категории lvl1–3, склад, город, сегмент ABC/XYZ/тип ряда.</bpmn:documentation>
-      <bpmn:incoming>f30</bpmn:incoming>
-      <bpmn:incoming>f39</bpmn:incoming>
-      <bpmn:outgoing>f32</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="VAL" name="Схема валидации: time-split, holdout 64 дня (как на тесте)">
-      <bpmn:documentation>Валидация по времени без перемешивания: последние 64 дня как отложенная выборка, при возможности несколько скользящих окон. Метрики считаются так же, как в score.py.</bpmn:documentation>
-      <bpmn:incoming>f32</bpmn:incoming>
-      <bpmn:outgoing>f33</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:parallelGateway id="PG5">
-      <bpmn:incoming>f33</bpmn:incoming>
-      <bpmn:outgoing>f34_M_BASE</bpmn:outgoing>
-      <bpmn:outgoing>f34_M_H</bpmn:outgoing>
-      <bpmn:outgoing>f34_M_R</bpmn:outgoing>
-      <bpmn:outgoing>f34_M_S</bpmn:outgoing>
-    </bpmn:parallelGateway>
-    <bpmn:task id="M_BASE" name="Baseline: последнее известное значение (наивный прогноз)">
-      <bpmn:documentation>Бейзлайн организаторов — прогноз последним известным значением; нужен для сравнения и как резервный вариант.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_mod</bpmn:categoryValueRef>
-      <bpmn:incoming>f34_M_BASE</bpmn:incoming>
-      <bpmn:outgoing>f35_M_BASE</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="M_H" name="ХОДОВЫЕ: глобальный GBM (LightGBM / CatBoost), таргет log1p">
-      <bpmn:documentation>Рекомендация (уточнить под фактическое решение команды): один глобальный градиентный бустинг по ходовым сериям, учитывает RMSE/WAPE на крупных объёмах.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_mod</bpmn:categoryValueRef>
-      <bpmn:incoming>f34_M_H</bpmn:incoming>
-      <bpmn:outgoing>f35_M_H</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="M_R" name="РЕДКИЕ: Croston / TSB или GBM (Tweedie), порог обнуления">
-      <bpmn:documentation>Рекомендация: методы для прерывистого спроса или GBM с Tweedie/Poisson; для SMAPE критично решение «0 или &gt; 0» (ошибка 200%).</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_mod</bpmn:categoryValueRef>
-      <bpmn:incoming>f34_M_R</bpmn:incoming>
-      <bpmn:outgoing>f35_M_R</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="M_S" name="СЕЗОННЫЕ: GBM с сезонными признаками / seasonal naive / ETS">
-      <bpmn:documentation>Рекомендация: сезонные признаки и лаги на длинной истории; Prophet/ETS/seasonal naive как альтернатива.</bpmn:documentation>
-      <bpmn:categoryValueRef>CV_G_mod</bpmn:categoryValueRef>
-      <bpmn:incoming>f34_M_S</bpmn:incoming>
-      <bpmn:outgoing>f35_M_S</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:parallelGateway id="PG6">
-      <bpmn:incoming>f35_M_BASE</bpmn:incoming>
-      <bpmn:incoming>f35_M_H</bpmn:incoming>
-      <bpmn:incoming>f35_M_R</bpmn:incoming>
-      <bpmn:incoming>f35_M_S</bpmn:incoming>
-      <bpmn:outgoing>f36</bpmn:outgoing>
-    </bpmn:parallelGateway>
-    <bpmn:task id="BLEND" name="Ансамбль по сегментам + калибровка bias">
-      <bpmn:documentation>Блендинг / стекинг моделей и сегментная калибровка масштаба прогноза, чтобы снизить |Bias| (10% веса).</bpmn:documentation>
-      <bpmn:incoming>f36</bpmn:incoming>
-      <bpmn:outgoing>f37</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="EVAL" name="Метрики на валидации: SMAPE 50%, WAPE 20%, RMSE 15%, |Bias| 10%, RMSLE 5%">
-      <bpmn:documentation>Расчёт пяти метрик ТЗ в целом и в разрезе сегментов (ходовые / редкие / сезонные, ABC/XYZ). Итоговая оценка организаторов — ранговая нормализация.</bpmn:documentation>
-      <bpmn:incoming>f37</bpmn:incoming>
-      <bpmn:outgoing>f38</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:exclusiveGateway id="XOR_q" name="Лучше baseline, метрики приемлемы?" default="f39">
-      <bpmn:incoming>f38</bpmn:incoming>
-      <bpmn:outgoing>f39</bpmn:outgoing>
-      <bpmn:outgoing>f40</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:parallelGateway id="PG8">
-      <bpmn:incoming>f40</bpmn:incoming>
-      <bpmn:outgoing>f41</bpmn:outgoing>
-      <bpmn:outgoing>f42</bpmn:outgoing>
-    </bpmn:parallelGateway>
-    <bpmn:task id="FINAL" name="Переобучить на всей истории (фиксированный seed) и спрогнозировать 64 дня">
-      <bpmn:documentation>Финальное обучение и прогноз ежедневно на 64 календарных дня от последней даты. Детерминированность: фиксированные seed, версии библиотек, порядок данных.</bpmn:documentation>
-      <bpmn:incoming>f41</bpmn:incoming>
-      <bpmn:outgoing>f43</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:parallelGateway id="PG10">
-      <bpmn:incoming>f43</bpmn:incoming>
-      <bpmn:outgoing>f44</bpmn:outgoing>
-      <bpmn:outgoing>f45</bpmn:outgoing>
-    </bpmn:parallelGateway>
-    <bpmn:task id="POST" name="Постобработка, сборка submission (562 496 строк), проверка формата и повторного запуска">
-      <bpmn:documentation>clip ≥ 0, NaN → 0, ровно 64 подряд идущие даты, все 11 × 799 пар, колонки date, warehouse_name, article, quantity. Повторный запуск должен давать идентичный файл.</bpmn:documentation>
-      <bpmn:incoming>f44</bpmn:incoming>
-      <bpmn:incoming>f47</bpmn:incoming>
-      <bpmn:outgoing>f46</bpmn:outgoing>
-      <bpmn:dataOutputAssociation id="da6">
-        <bpmn:targetRef>DO_sub_ref</bpmn:targetRef>
-      </bpmn:dataOutputAssociation>
-    </bpmn:task>
-    <bpmn:exclusiveGateway id="XOR_v" name="Формат корректен, результат воспроизводим?" default="f47">
-      <bpmn:incoming>f46</bpmn:incoming>
-      <bpmn:outgoing>f47</bpmn:outgoing>
-      <bpmn:outgoing>f48</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:task id="D1" name="Бизнес-часть (черновик): проблема, ценность, находки EDA, сегменты, влияние остатков">
-      <bpmn:documentation>Проблема: прогноз спроса по 11 складам × 799 артикулам на 64 дня. Ценность: меньше дефицита и излишков. Находки: сегментация ABC/XYZ (ходовые / редкие / сезонные), доля потерь из-за OOS.</bpmn:documentation>
-      <bpmn:incoming>f31</bpmn:incoming>
-      <bpmn:outgoing>f49</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:parallelGateway id="PGj">
-      <bpmn:incoming>f42</bpmn:incoming>
-      <bpmn:incoming>f49</bpmn:incoming>
-      <bpmn:outgoing>f50</bpmn:outgoing>
-    </bpmn:parallelGateway>
-    <bpmn:task id="D3" name="Дополнить бизнес-часть: метрики, эффект, рекомендации по запасам и OOS">
-      <bpmn:documentation>Результаты модели простым языком: качество по сегментам, где прогноз надёжен, где нет, рекомендации по управлению запасами для A/B/C и X/Y/Z.</bpmn:documentation>
-      <bpmn:incoming>f50</bpmn:incoming>
-      <bpmn:outgoing>f51</bpmn:outgoing>
-      <bpmn:dataOutputAssociation id="da7">
-        <bpmn:targetRef>DO_pres_ref</bpmn:targetRef>
-      </bpmn:dataOutputAssociation>
-    </bpmn:task>
-    <bpmn:task id="D2" name="Описание решения для архива: подход, признаки, модели, валидация, воспроизводимость">
-      <bpmn:documentation>Для архива: постановка, данные и допущения, EDA и сегментация, влияние остатков, признаки, модели по сегментам, валидация и метрики, постобработка, детерминированность, запуск кода, ограничения.</bpmn:documentation>
-      <bpmn:incoming>f51</bpmn:incoming>
-      <bpmn:outgoing>f52</bpmn:outgoing>
-      <bpmn:dataOutputAssociation id="da8">
-        <bpmn:targetRef>DO_desc_ref</bpmn:targetRef>
-      </bpmn:dataOutputAssociation>
-    </bpmn:task>
-    <bpmn:parallelGateway id="PG9">
-      <bpmn:incoming>f48</bpmn:incoming>
-      <bpmn:incoming>f52</bpmn:incoming>
-      <bpmn:outgoing>f53</bpmn:outgoing>
-    </bpmn:parallelGateway>
-    <bpmn:task id="D4" name="Собрать архив: код (notebook / скрипт), описание, submission.csv">
-      <bpmn:documentation>Состав архива: код решения, описание решения, прогноз submission.csv. Формат требований к коду будет объявлен организаторами отдельно.</bpmn:documentation>
-      <bpmn:incoming>f53</bpmn:incoming>
-      <bpmn:outgoing>f54</bpmn:outgoing>
-      <bpmn:dataOutputAssociation id="da9">
-        <bpmn:targetRef>DO_zip_ref</bpmn:targetRef>
-      </bpmn:dataOutputAssociation>
-    </bpmn:task>
-    <bpmn:endEvent id="End_docs" name="Архив и презентация переданы">
-      <bpmn:incoming>f54</bpmn:incoming>
-      <bpmn:messageEventDefinition id="End_docs_med" />
+    <bpmn:endEvent id="End_docs" name="Архив и презентация отправлены">
+      <bpmn:incoming>f_D_zip_End_docs</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:exclusiveGateway id="XOR_s" name="Делаем ★ (до 8 баллов)?" default="f56">
-      <bpmn:incoming>f45</bpmn:incoming>
-      <bpmn:outgoing>f55</bpmn:outgoing>
-      <bpmn:outgoing>f56</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    <bpmn:task id="K1" name="Артефакты модели + FastAPI: POST/GET /predict, GET /predict/all, /health">
-      <bpmn:documentation>model.pkl / preprocessor.pkl / config.json; эндпоинты POST /predict (sales+stock CSV), GET /predict?article=&amp;warehouse=, GET /predict/all?format=csv|json, GET /health.</bpmn:documentation>
-      <bpmn:incoming>f55</bpmn:incoming>
-      <bpmn:outgoing>f57</bpmn:outgoing>
+    <bpmn:task id="K1" name="src/data_pipeline.py: сетка из сырых sales и stock">
+      <bpmn:incoming>f_PG_K1</bpmn:incoming>
+      <bpmn:outgoing>f_K1_K2</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="K2" name="Валидаторы (≥ 180 дней, колонки, даты, &#60; 0 → 422), Dockerfile, README, tests">
-      <bpmn:documentation>Валидация входа: колонки, формат дат, ≥ 180 дней истории (иначе 422), отрицательные значения (422), пустые файлы (400); формат ошибки {detail, code}. Dockerfile, requirements, .dockerignore, README с 6 разделами, tests/test_api.sh.</bpmn:documentation>
-      <bpmn:incoming>f57</bpmn:incoming>
-      <bpmn:outgoing>f58</bpmn:outgoing>
+    <bpmn:task id="K2" name="app/: POST/GET /predict, /predict/all; отрицательный stock допустим">
+      <bpmn:documentation>Прогноз API — 9 недель с понедельника после недели последней даты sales. 422 — история &lt; 180 дней или quantity &lt; 0; 400 — пустой файл или GET без параметров.</bpmn:documentation>
+      <bpmn:incoming>f_K1_K2</bpmn:incoming>
+      <bpmn:outgoing>f_K2_K3</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="K3" name="Тесты: сборка ≤ 60 мин, инференс ≤ 60 / 10 мин, без сети, детерминизм">
-      <bpmn:documentation>Критерии ТЗ: сборка ≤ 60 мин, POST ≤ 60 мин, GET ≤ 10 мин, образ ≤ 30 ГБ, RAM ≤ 64 ГБ, нет доступа к сети, качество не хуже основного submission.</bpmn:documentation>
-      <bpmn:incoming>f58</bpmn:incoming>
-      <bpmn:outgoing>f59</bpmn:outgoing>
+    <bpmn:task id="K3" name="Dockerfile, README, тесты: прогноз контейнера = submission">
+      <bpmn:incoming>f_K2_K3</bpmn:incoming>
+      <bpmn:outgoing>f_K3_End_star</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:endEvent id="End_star" name="Git-репозиторий (Docker + API) передан">
-      <bpmn:incoming>f59</bpmn:incoming>
-      <bpmn:messageEventDefinition id="End_star_med" />
+    <bpmn:endEvent id="End_star" name="Репозиторий с контейнером передан">
+      <bpmn:incoming>f_K3_End_star</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:endEvent id="End_ns" name="★ не выполняется">
-      <bpmn:incoming>f56</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:dataObjectReference id="DO_sub_ref" name="submission.csv" dataObjectRef="DO_sub_obj" />
-    <bpmn:dataObject id="DO_sub_obj" />
-    <bpmn:dataObjectReference id="DO_pres_ref" name="Презентация (бизнес-часть)" dataObjectRef="DO_pres_obj" />
-    <bpmn:dataObject id="DO_pres_obj" />
-    <bpmn:dataObjectReference id="DO_desc_ref" name="Описание решения" dataObjectRef="DO_desc_obj" />
-    <bpmn:dataObject id="DO_desc_obj" />
-    <bpmn:dataObjectReference id="DO_zip_ref" name="Архив: код + описание + прогноз" dataObjectRef="DO_zip_obj" />
-    <bpmn:dataObject id="DO_zip_obj" />
-    <bpmn:dataObjectReference id="DO_sales_ref" name="sales_dataset_hakaton.csv" dataObjectRef="DO_sales_obj" />
-    <bpmn:dataObject id="DO_sales_obj" />
-    <bpmn:dataObjectReference id="DO_stock_ref" name="stock_dataset_hakaton.csv" dataObjectRef="DO_stock_obj" />
-    <bpmn:dataObject id="DO_stock_obj" />
-    <bpmn:dataStoreReference id="DS_panel_ref" name="Панельный датасет: date × склад × артикул + stock" dataStoreRef="DataStore_panel" />
-    <bpmn:dataObjectReference id="DO_seg_ref" name="Таблица сегментов (ABC/XYZ + тип)" dataObjectRef="DO_seg_obj" />
-    <bpmn:dataObject id="DO_seg_obj" />
-    <bpmn:dataObjectReference id="DO_conc_ref" name="Выводы для модели" dataObjectRef="DO_conc_obj" />
-    <bpmn:dataObject id="DO_conc_obj" />
-    <bpmn:sequenceFlow id="f01" sourceRef="Start" targetRef="T_load" />
-    <bpmn:sequenceFlow id="f02" sourceRef="T_load" targetRef="T_clean" />
-    <bpmn:sequenceFlow id="f03" sourceRef="T_clean" targetRef="T_agg" />
-    <bpmn:sequenceFlow id="f04" sourceRef="T_agg" targetRef="T_join" />
-    <bpmn:sequenceFlow id="f05" sourceRef="T_join" targetRef="PG0" />
-    <bpmn:sequenceFlow id="f06" sourceRef="PG0" targetRef="E1" />
-    <bpmn:sequenceFlow id="f07" sourceRef="PG0" targetRef="O1" />
-    <bpmn:sequenceFlow id="f08" sourceRef="E1" targetRef="E2">
-      <bpmn:categoryValueRef>CV_G_eda</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f09" sourceRef="E2" targetRef="S1" />
-    <bpmn:sequenceFlow id="f10" sourceRef="S1" targetRef="PG1">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f11_ABC" sourceRef="PG1" targetRef="ABC">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f11_XYZ" sourceRef="PG1" targetRef="XYZ">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f12_ABC" sourceRef="ABC" targetRef="PG2">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f12_XYZ" sourceRef="XYZ" targetRef="PG2">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f13" sourceRef="PG2" targetRef="XOR1">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f14" name="Да" sourceRef="XOR1" targetRef="SEG_R">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f15" name="Нет" sourceRef="XOR1" targetRef="XOR2">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f16" name="Да" sourceRef="XOR2" targetRef="SEG_S">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f17" name="Нет" sourceRef="XOR2" targetRef="SEG_H">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f18_SEG_R" sourceRef="SEG_R" targetRef="XOR3">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f18_SEG_S" sourceRef="SEG_S" targetRef="XOR3">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f18_SEG_H" sourceRef="SEG_H" targetRef="XOR3">
-      <bpmn:categoryValueRef>CV_G_seg</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f19" sourceRef="XOR3" targetRef="FIX" />
-    <bpmn:sequenceFlow id="f20" sourceRef="FIX" targetRef="PG3" />
-    <bpmn:sequenceFlow id="f29" sourceRef="XOR_om" targetRef="PG3" />
-    <bpmn:sequenceFlow id="f21" sourceRef="PG3" targetRef="CROSS" />
-    <bpmn:sequenceFlow id="f22" sourceRef="CROSS" targetRef="CONC" />
-    <bpmn:sequenceFlow id="f23" sourceRef="CONC" targetRef="PG4" />
-    <bpmn:sequenceFlow id="f30" sourceRef="PG4" targetRef="FE" />
-    <bpmn:sequenceFlow id="f31" sourceRef="PG4" targetRef="D1" />
-    <bpmn:sequenceFlow id="f24" sourceRef="O1" targetRef="O2">
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f25" sourceRef="O2" targetRef="XOR_o">
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f26" name="Да" sourceRef="XOR_o" targetRef="O3">
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f27" name="Нет" sourceRef="XOR_o" targetRef="O4">
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f28_O3" sourceRef="O3" targetRef="XOR_om">
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f28_O4" sourceRef="O4" targetRef="XOR_om">
-      <bpmn:categoryValueRef>CV_G_stock</bpmn:categoryValueRef>
-    </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="f39" name="Нет: доработать признаки / модели" sourceRef="XOR_q" targetRef="FE" />
-    <bpmn:sequenceFlow id="f32" sourceRef="FE" targetRef="VAL" />
-    <bpmn:sequenceFlow id="f33" sourceRef="VAL" targetRef="PG5" />
-    <bpmn:sequenceFlow id="f34_M_BASE" sourceRef="PG5" targetRef="M_BASE" />
-    <bpmn:sequenceFlow id="f34_M_H" sourceRef="PG5" targetRef="M_H" />
-    <bpmn:sequenceFlow id="f34_M_R" sourceRef="PG5" targetRef="M_R" />
-    <bpmn:sequenceFlow id="f34_M_S" sourceRef="PG5" targetRef="M_S" />
-    <bpmn:sequenceFlow id="f35_M_BASE" sourceRef="M_BASE" targetRef="PG6" />
-    <bpmn:sequenceFlow id="f35_M_H" sourceRef="M_H" targetRef="PG6" />
-    <bpmn:sequenceFlow id="f35_M_R" sourceRef="M_R" targetRef="PG6" />
-    <bpmn:sequenceFlow id="f35_M_S" sourceRef="M_S" targetRef="PG6" />
-    <bpmn:sequenceFlow id="f36" sourceRef="PG6" targetRef="BLEND" />
-    <bpmn:sequenceFlow id="f37" sourceRef="BLEND" targetRef="EVAL" />
-    <bpmn:sequenceFlow id="f38" sourceRef="EVAL" targetRef="XOR_q" />
-    <bpmn:sequenceFlow id="f40" name="Да" sourceRef="XOR_q" targetRef="PG8" />
-    <bpmn:sequenceFlow id="f41" sourceRef="PG8" targetRef="FINAL" />
-    <bpmn:sequenceFlow id="f42" sourceRef="PG8" targetRef="PGj" />
-    <bpmn:sequenceFlow id="f43" sourceRef="FINAL" targetRef="PG10" />
-    <bpmn:sequenceFlow id="f44" sourceRef="PG10" targetRef="POST" />
-    <bpmn:sequenceFlow id="f45" sourceRef="PG10" targetRef="XOR_s" />
-    <bpmn:sequenceFlow id="f47" name="Нет" sourceRef="XOR_v" targetRef="POST" />
-    <bpmn:sequenceFlow id="f46" sourceRef="POST" targetRef="XOR_v" />
-    <bpmn:sequenceFlow id="f48" name="Да" sourceRef="XOR_v" targetRef="PG9" />
-    <bpmn:sequenceFlow id="f49" sourceRef="D1" targetRef="PGj" />
-    <bpmn:sequenceFlow id="f50" sourceRef="PGj" targetRef="D3" />
-    <bpmn:sequenceFlow id="f51" sourceRef="D3" targetRef="D2" />
-    <bpmn:sequenceFlow id="f52" sourceRef="D2" targetRef="PG9" />
-    <bpmn:sequenceFlow id="f53" sourceRef="PG9" targetRef="D4" />
-    <bpmn:sequenceFlow id="f54" sourceRef="D4" targetRef="End_docs" />
-    <bpmn:sequenceFlow id="f55" name="Да" sourceRef="XOR_s" targetRef="K1" />
-    <bpmn:sequenceFlow id="f56" name="Нет" sourceRef="XOR_s" targetRef="End_ns" />
-    <bpmn:sequenceFlow id="f57" sourceRef="K1" targetRef="K2" />
-    <bpmn:sequenceFlow id="f58" sourceRef="K2" targetRef="K3" />
-    <bpmn:sequenceFlow id="f59" sourceRef="K3" targetRef="End_star" />
+    <bpmn:sequenceFlow id="f_Start_T_load" sourceRef="Start" targetRef="T_load" />
+    <bpmn:sequenceFlow id="f_T_load_T_clean" sourceRef="T_load" targetRef="T_clean" />
+    <bpmn:sequenceFlow id="f_T_clean_T_grid" sourceRef="T_clean" targetRef="T_grid" />
+    <bpmn:sequenceFlow id="f_T_grid_A_eda" sourceRef="T_grid" targetRef="A_eda" />
+    <bpmn:sequenceFlow id="f_A_eda_A_stock" sourceRef="A_eda" targetRef="A_stock" />
+    <bpmn:sequenceFlow id="f_A_stock_A_conc" sourceRef="A_stock" targetRef="A_conc" />
+    <bpmn:sequenceFlow id="f_A_conc_M_base" sourceRef="A_conc" targetRef="M_base" />
+    <bpmn:sequenceFlow id="f_M_base_M_feat" sourceRef="M_base" targetRef="M_feat" />
+    <bpmn:sequenceFlow id="f_M_feat_M_train" sourceRef="M_feat" targetRef="M_train" />
+    <bpmn:sequenceFlow id="f_M_train_M_thr" sourceRef="M_train" targetRef="M_thr" />
+    <bpmn:sequenceFlow id="f_M_thr_M_season" sourceRef="M_thr" targetRef="M_season" />
+    <bpmn:sequenceFlow id="f_M_season_G_q" sourceRef="M_season" targetRef="G_q" />
+    <bpmn:sequenceFlow id="f_G_q_M_final" name="да" sourceRef="G_q" targetRef="M_final" />
+    <bpmn:sequenceFlow id="f_G_q_M_feat" name="нет" sourceRef="G_q" targetRef="M_feat" />
+    <bpmn:sequenceFlow id="f_M_final_M_sub" sourceRef="M_final" targetRef="M_sub" />
+    <bpmn:sequenceFlow id="f_M_sub_G_v" sourceRef="M_sub" targetRef="G_v" />
+    <bpmn:sequenceFlow id="f_G_v_M_art" name="да" sourceRef="G_v" targetRef="M_art" />
+    <bpmn:sequenceFlow id="f_G_v_M_final" name="нет" sourceRef="G_v" targetRef="M_final" />
+    <bpmn:sequenceFlow id="f_M_art_PG" sourceRef="M_art" targetRef="PG" />
+    <bpmn:sequenceFlow id="f_PG_D_desc" sourceRef="PG" targetRef="D_desc" />
+    <bpmn:sequenceFlow id="f_PG_K1" sourceRef="PG" targetRef="K1" />
+    <bpmn:sequenceFlow id="f_D_desc_D_pres" sourceRef="D_desc" targetRef="D_pres" />
+    <bpmn:sequenceFlow id="f_D_pres_D_zip" sourceRef="D_pres" targetRef="D_zip" />
+    <bpmn:sequenceFlow id="f_D_zip_End_docs" sourceRef="D_zip" targetRef="End_docs" />
+    <bpmn:sequenceFlow id="f_K1_K2" sourceRef="K1" targetRef="K2" />
+    <bpmn:sequenceFlow id="f_K2_K3" sourceRef="K2" targetRef="K3" />
+    <bpmn:sequenceFlow id="f_K3_End_star" sourceRef="K3" targetRef="End_star" />
+    <bpmn:dataObjectReference id="DO_raw_ref" name="sales.csv, stock.csv" dataObjectRef="DO_raw" />
+    <bpmn:dataObject id="DO_raw" />
+    <bpmn:dataStoreReference id="DS_grid_ref" name="base_grid_clean.csv" dataStoreRef="DS_grid" />
+    <bpmn:dataObjectReference id="DO_seg_ref" name="series_segments.csv, дашборд" dataObjectRef="DO_seg" />
+    <bpmn:dataObject id="DO_seg" />
+    <bpmn:dataObjectReference id="DO_model_ref" name="weekly_model_v6.py, model_v6_*.txt" dataObjectRef="DO_model" />
+    <bpmn:dataObject id="DO_model" />
+    <bpmn:dataObjectReference id="DO_sub_ref" name="submission_weekly_v6.csv" dataObjectRef="DO_sub" />
+    <bpmn:dataObject id="DO_sub" />
+    <bpmn:dataObjectReference id="DO_doc_ref" name="Описание решения" dataObjectRef="DO_doc" />
+    <bpmn:dataObject id="DO_doc" />
+    <bpmn:dataObjectReference id="DO_pres_ref" name="Презентация" dataObjectRef="DO_pres" />
+    <bpmn:dataObject id="DO_pres" />
   </bpmn:process>
-  <bpmn:category id="Cat_G_eda">
-    <bpmn:categoryValue id="CV_G_eda" value="1. EDA" />
-  </bpmn:category>
-  <bpmn:category id="Cat_G_seg">
-    <bpmn:categoryValue id="CV_G_seg" value="2. Сегментация рядов: ABC / XYZ / тип ряда" />
-  </bpmn:category>
-  <bpmn:category id="Cat_G_stock">
-    <bpmn:categoryValue id="CV_G_stock" value="3. Влияние остатков (stock)" />
-  </bpmn:category>
-  <bpmn:category id="Cat_G_mod">
-    <bpmn:categoryValue id="CV_G_mod" value="Модели по сегментам" />
-  </bpmn:category>
-  <bpmndi:BPMNDiagram id="Diagram_1">
-    <bpmndi:BPMNPlane id="Plane_1" bpmnElement="Collab_1">
-      <bpmndi:BPMNShape id="P_main_di" bpmnElement="P_main" isHorizontal="true">
-        <dc:Bounds x="160" y="200" width="6124" height="1870" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="L5_di" bpmnElement="L5" isHorizontal="true">
-        <dc:Bounds x="190" y="1820" width="6094" height="250" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="L4_di" bpmnElement="L4" isHorizontal="true">
-        <dc:Bounds x="190" y="1570" width="6094" height="250" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="L3_di" bpmnElement="L3" isHorizontal="true">
-        <dc:Bounds x="190" y="1080" width="6094" height="490" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="L2_di" bpmnElement="L2" isHorizontal="true">
-        <dc:Bounds x="190" y="830" width="6094" height="250" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="L1_di" bpmnElement="L1" isHorizontal="true">
-        <dc:Bounds x="190" y="450" width="6094" height="380" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="L0_di" bpmnElement="L0" isHorizontal="true">
-        <dc:Bounds x="190" y="200" width="6094" height="250" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start">
-        <dc:Bounds x="252" y="262" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="231" y="301" width="78" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="T_load_di" bpmnElement="T_load">
-        <dc:Bounds x="328" y="235" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="T_clean_di" bpmnElement="T_clean">
-        <dc:Bounds x="528" y="235" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="T_agg_di" bpmnElement="T_agg">
-        <dc:Bounds x="728" y="235" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="T_join_di" bpmnElement="T_join">
-        <dc:Bounds x="928" y="235" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PG0_di" bpmnElement="PG0">
-        <dc:Bounds x="1133" y="255" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="E1_di" bpmnElement="E1" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="1253" y="600" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="E2_di" bpmnElement="E2" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="1453" y="600" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="S1_di" bpmnElement="S1" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="1653" y="600" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PG1_di" bpmnElement="PG1">
-        <dc:Bounds x="1858" y="620" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="ABC_di" bpmnElement="ABC" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="1978" y="490" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="XYZ_di" bpmnElement="XYZ" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="1978" y="710" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PG2_di" bpmnElement="PG2">
-        <dc:Bounds x="2208" y="620" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="XOR1_di" bpmnElement="XOR1" isMarkerVisible="true">
-        <dc:Bounds x="2303" y="620" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2256" y="673" width="145" height="40" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="XOR2_di" bpmnElement="XOR2" isMarkerVisible="true">
-        <dc:Bounds x="2408" y="620" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2400" y="588" width="66" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="SEG_R_di" bpmnElement="SEG_R" bioc:stroke="#b91c1c" bioc:fill="#fee2e2" color:background-color="#fee2e2" color:border-color="#b91c1c">
-        <dc:Bounds x="2508" y="490" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="SEG_S_di" bpmnElement="SEG_S" bioc:stroke="#6d28d9" bioc:fill="#ede9fe" color:background-color="#ede9fe" color:border-color="#6d28d9">
-        <dc:Bounds x="2508" y="600" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="SEG_H_di" bpmnElement="SEG_H" bioc:stroke="#15803d" bioc:fill="#dcfce7" color:background-color="#dcfce7" color:border-color="#15803d">
-        <dc:Bounds x="2508" y="710" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="XOR3_di" bpmnElement="XOR3" isMarkerVisible="true">
-        <dc:Bounds x="2738" y="620" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="FIX_di" bpmnElement="FIX" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="2833" y="600" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PG3_di" bpmnElement="PG3">
-        <dc:Bounds x="3038" y="620" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="CROSS_di" bpmnElement="CROSS" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="3133" y="600" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="CONC_di" bpmnElement="CONC" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="3333" y="600" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PG4_di" bpmnElement="PG4">
-        <dc:Bounds x="3538" y="620" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="O1_di" bpmnElement="O1" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="1253" y="910" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="O2_di" bpmnElement="O2" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="1453" y="910" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="XOR_o_di" bpmnElement="XOR_o" isMarkerVisible="true">
-        <dc:Bounds x="1658" y="930" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1617" y="1026" width="106" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="O3_di" bpmnElement="O3" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="1753" y="850" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="O4_di" bpmnElement="O4" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="1753" y="970" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="XOR_om_di" bpmnElement="XOR_om" isMarkerVisible="true">
-        <dc:Bounds x="1983" y="930" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="FE_di" bpmnElement="FE">
-        <dc:Bounds x="3668" y="1275" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="VAL_di" bpmnElement="VAL">
-        <dc:Bounds x="3868" y="1275" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PG5_di" bpmnElement="PG5">
-        <dc:Bounds x="4073" y="1295" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="M_BASE_di" bpmnElement="M_BASE" bioc:stroke="#4b5563" bioc:fill="#f3f4f6" color:background-color="#f3f4f6" color:border-color="#4b5563">
-        <dc:Bounds x="4193" y="1110" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="M_H_di" bpmnElement="M_H" bioc:stroke="#15803d" bioc:fill="#dcfce7" color:background-color="#dcfce7" color:border-color="#15803d">
-        <dc:Bounds x="4193" y="1220" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="M_R_di" bpmnElement="M_R" bioc:stroke="#b91c1c" bioc:fill="#fee2e2" color:background-color="#fee2e2" color:border-color="#b91c1c">
-        <dc:Bounds x="4193" y="1330" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="M_S_di" bpmnElement="M_S" bioc:stroke="#6d28d9" bioc:fill="#ede9fe" color:background-color="#ede9fe" color:border-color="#6d28d9">
-        <dc:Bounds x="4193" y="1440" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PG6_di" bpmnElement="PG6">
-        <dc:Bounds x="4423" y="1295" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BLEND_di" bpmnElement="BLEND">
-        <dc:Bounds x="4518" y="1275" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="EVAL_di" bpmnElement="EVAL">
-        <dc:Bounds x="4718" y="1275" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="XOR_q_di" bpmnElement="XOR_q" isMarkerVisible="true">
-        <dc:Bounds x="4923" y="1295" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="4908" y="1250" width="81" height="40" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PG8_di" bpmnElement="PG8">
-        <dc:Bounds x="5018" y="1295" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="FINAL_di" bpmnElement="FINAL">
-        <dc:Bounds x="5113" y="1275" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PG10_di" bpmnElement="PG10">
-        <dc:Bounds x="5318" y="1295" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="POST_di" bpmnElement="POST">
-        <dc:Bounds x="5413" y="1275" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="XOR_v_di" bpmnElement="XOR_v" isMarkerVisible="true">
-        <dc:Bounds x="5618" y="1295" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5684" y="1299" width="97" height="40" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="D1_di" bpmnElement="D1" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="3613" y="1615" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PGj_di" bpmnElement="PGj">
-        <dc:Bounds x="5018" y="1635" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="D3_di" bpmnElement="D3" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="5113" y="1615" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="D2_di" bpmnElement="D2" bioc:stroke="#1e40af" bioc:fill="#dbeafe" color:background-color="#dbeafe" color:border-color="#1e40af">
-        <dc:Bounds x="5378" y="1615" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="PG9_di" bpmnElement="PG9">
-        <dc:Bounds x="5618" y="1635" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="D4_di" bpmnElement="D4">
-        <dc:Bounds x="5713" y="1615" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="End_docs_di" bpmnElement="End_docs">
-        <dc:Bounds x="5918" y="1642" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5904" y="1681" width="65" height="40" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="XOR_s_di" bpmnElement="XOR_s" isMarkerVisible="true">
-        <dc:Bounds x="5398" y="1885" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5383" y="1853" width="81" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="K1_di" bpmnElement="K1" bioc:stroke="#b45309" bioc:fill="#fef3c7" color:background-color="#fef3c7" color:border-color="#b45309">
-        <dc:Bounds x="5493" y="1865" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="K2_di" bpmnElement="K2" bioc:stroke="#b45309" bioc:fill="#fef3c7" color:background-color="#fef3c7" color:border-color="#b45309">
-        <dc:Bounds x="5693" y="1865" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="K3_di" bpmnElement="K3" bioc:stroke="#b45309" bioc:fill="#fef3c7" color:background-color="#fef3c7" color:border-color="#b45309">
-        <dc:Bounds x="5893" y="1865" width="160" height="90" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="End_star_di" bpmnElement="End_star">
-        <dc:Bounds x="6098" y="1892" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="6075" y="1931" width="83" height="40" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="End_ns_di" bpmnElement="End_ns">
-        <dc:Bounds x="5405" y="1992" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5376" y="2031" width="94" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="DO_sub_di" bpmnElement="DO_sub_ref">
-        <dc:Bounds x="5475" y="1405" width="36" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5456" y="1455" width="75" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="DO_pres_di" bpmnElement="DO_pres_ref">
-        <dc:Bounds x="5175" y="1735" width="36" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5156" y="1785" width="75" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="DO_desc_di" bpmnElement="DO_desc_ref">
-        <dc:Bounds x="5440" y="1735" width="36" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5433" y="1785" width="51" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="DO_zip_di" bpmnElement="DO_zip_ref">
-        <dc:Bounds x="5775" y="1735" width="36" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5707" y="1785" width="160" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="DO_sales_di" bpmnElement="DO_sales_ref">
-        <dc:Bounds x="290" y="365" width="36" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="265" y="415" width="87" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="DO_stock_di" bpmnElement="DO_stock_ref">
-        <dc:Bounds x="490" y="365" width="36" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="465" y="415" width="87" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="DS_panel_di" bpmnElement="DS_panel_ref">
-        <dc:Bounds x="983" y="365" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="900" y="423" width="199" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="DO_seg_di" bpmnElement="DO_seg_ref">
-        <dc:Bounds x="2895" y="730" width="36" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2871" y="780" width="85" height="40" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="DO_conc_di" bpmnElement="DO_conc_ref">
-        <dc:Bounds x="3395" y="730" width="36" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="3381" y="780" width="64" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="A1_di" bpmnElement="A1">
-        <dc:Bounds x="1663" y="478" width="275" height="78" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="A2_di" bpmnElement="A2">
-        <dc:Bounds x="2150" y="850" width="440" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="A3_di" bpmnElement="A3">
-        <dc:Bounds x="4458" y="1390" width="440" height="66" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="A4_di" bpmnElement="A4">
-        <dc:Bounds x="5070" y="1125" width="262" height="84" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G_eda_di" bpmnElement="G_eda">
-        <dc:Bounds x="1238" y="570" width="390" height="132" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1416" y="570" width="35" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G_seg_di" bpmnElement="G_seg">
-        <dc:Bounds x="1638" y="458" width="1165" height="364" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2176" y="458" width="90" height="40" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G_stock_di" bpmnElement="G_stock">
-        <dc:Bounds x="1238" y="838" width="810" height="236" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1603" y="838" width="81" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G_mod_di" bpmnElement="G_mod">
-        <dc:Bounds x="4181" y="1090" width="184" height="450" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="4200" y="1090" width="153" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="f01_di" bpmnElement="f01">
-        <di:waypoint x="288" y="280" />
-        <di:waypoint x="328" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f02_di" bpmnElement="f02">
-        <di:waypoint x="488" y="280" />
-        <di:waypoint x="528" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f03_di" bpmnElement="f03">
-        <di:waypoint x="688" y="280" />
-        <di:waypoint x="728" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f04_di" bpmnElement="f04">
-        <di:waypoint x="888" y="280" />
-        <di:waypoint x="928" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f05_di" bpmnElement="f05">
-        <di:waypoint x="1088" y="280" />
-        <di:waypoint x="1133" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f06_di" bpmnElement="f06">
-        <di:waypoint x="1183" y="280" />
-        <di:waypoint x="1218" y="280" />
-        <di:waypoint x="1218" y="645" />
-        <di:waypoint x="1253" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f07_di" bpmnElement="f07">
-        <di:waypoint x="1158" y="305" />
-        <di:waypoint x="1158" y="955" />
-        <di:waypoint x="1253" y="955" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f08_di" bpmnElement="f08">
-        <di:waypoint x="1413" y="645" />
-        <di:waypoint x="1453" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f09_di" bpmnElement="f09">
-        <di:waypoint x="1613" y="645" />
-        <di:waypoint x="1653" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f10_di" bpmnElement="f10">
-        <di:waypoint x="1813" y="645" />
-        <di:waypoint x="1858" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f11_ABC_di" bpmnElement="f11_ABC">
-        <di:waypoint x="1908" y="645" />
-        <di:waypoint x="1943" y="645" />
-        <di:waypoint x="1943" y="535" />
-        <di:waypoint x="1978" y="535" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f11_XYZ_di" bpmnElement="f11_XYZ">
-        <di:waypoint x="1908" y="645" />
-        <di:waypoint x="1943" y="645" />
-        <di:waypoint x="1943" y="755" />
-        <di:waypoint x="1978" y="755" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f12_ABC_di" bpmnElement="f12_ABC">
-        <di:waypoint x="2138" y="535" />
-        <di:waypoint x="2173" y="535" />
-        <di:waypoint x="2173" y="645" />
-        <di:waypoint x="2208" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f12_XYZ_di" bpmnElement="f12_XYZ">
-        <di:waypoint x="2138" y="755" />
-        <di:waypoint x="2173" y="755" />
-        <di:waypoint x="2173" y="645" />
-        <di:waypoint x="2208" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f13_di" bpmnElement="f13">
-        <di:waypoint x="2258" y="645" />
-        <di:waypoint x="2303" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f14_di" bpmnElement="f14">
-        <di:waypoint x="2328" y="620" />
-        <di:waypoint x="2328" y="535" />
-        <di:waypoint x="2508" y="535" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2335" y="598" width="14" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f15_di" bpmnElement="f15">
-        <di:waypoint x="2353" y="645" />
-        <di:waypoint x="2408" y="645" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2362" y="628" width="19" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f16_di" bpmnElement="f16">
-        <di:waypoint x="2458" y="645" />
-        <di:waypoint x="2508" y="645" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2467" y="628" width="14" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f17_di" bpmnElement="f17">
-        <di:waypoint x="2433" y="670" />
-        <di:waypoint x="2433" y="755" />
-        <di:waypoint x="2508" y="755" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2440" y="675" width="19" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f18_SEG_R_di" bpmnElement="f18_SEG_R">
-        <di:waypoint x="2668" y="535" />
-        <di:waypoint x="2703" y="535" />
-        <di:waypoint x="2703" y="645" />
-        <di:waypoint x="2738" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f18_SEG_S_di" bpmnElement="f18_SEG_S">
-        <di:waypoint x="2668" y="645" />
-        <di:waypoint x="2738" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f18_SEG_H_di" bpmnElement="f18_SEG_H">
-        <di:waypoint x="2668" y="755" />
-        <di:waypoint x="2703" y="755" />
-        <di:waypoint x="2703" y="645" />
-        <di:waypoint x="2738" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f19_di" bpmnElement="f19">
-        <di:waypoint x="2788" y="645" />
-        <di:waypoint x="2833" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f20_di" bpmnElement="f20">
-        <di:waypoint x="2993" y="645" />
-        <di:waypoint x="3038" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f21_di" bpmnElement="f21">
-        <di:waypoint x="3088" y="645" />
-        <di:waypoint x="3133" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f22_di" bpmnElement="f22">
-        <di:waypoint x="3293" y="645" />
-        <di:waypoint x="3333" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f23_di" bpmnElement="f23">
-        <di:waypoint x="3493" y="645" />
-        <di:waypoint x="3538" y="645" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f24_di" bpmnElement="f24">
-        <di:waypoint x="1413" y="955" />
-        <di:waypoint x="1453" y="955" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f25_di" bpmnElement="f25">
-        <di:waypoint x="1613" y="955" />
-        <di:waypoint x="1658" y="955" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f26_di" bpmnElement="f26">
-        <di:waypoint x="1683" y="930" />
-        <di:waypoint x="1683" y="895" />
-        <di:waypoint x="1753" y="895" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1690" y="908" width="14" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f27_di" bpmnElement="f27">
-        <di:waypoint x="1683" y="980" />
-        <di:waypoint x="1683" y="1015" />
-        <di:waypoint x="1753" y="1015" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1690" y="985" width="19" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f28_O3_di" bpmnElement="f28_O3">
-        <di:waypoint x="1913" y="895" />
-        <di:waypoint x="1948" y="895" />
-        <di:waypoint x="1948" y="955" />
-        <di:waypoint x="1983" y="955" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f28_O4_di" bpmnElement="f28_O4">
-        <di:waypoint x="1913" y="1015" />
-        <di:waypoint x="1948" y="1015" />
-        <di:waypoint x="1948" y="955" />
-        <di:waypoint x="1983" y="955" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f29_di" bpmnElement="f29">
-        <di:waypoint x="2033" y="955" />
-        <di:waypoint x="3063" y="955" />
-        <di:waypoint x="3063" y="670" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f30_di" bpmnElement="f30">
-        <di:waypoint x="3588" y="645" />
-        <di:waypoint x="3623" y="645" />
-        <di:waypoint x="3623" y="1320" />
-        <di:waypoint x="3668" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f31_di" bpmnElement="f31">
-        <di:waypoint x="3563" y="670" />
-        <di:waypoint x="3563" y="1660" />
-        <di:waypoint x="3613" y="1660" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f32_di" bpmnElement="f32">
-        <di:waypoint x="3828" y="1320" />
-        <di:waypoint x="3868" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f33_di" bpmnElement="f33">
-        <di:waypoint x="4028" y="1320" />
-        <di:waypoint x="4073" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f34_M_BASE_di" bpmnElement="f34_M_BASE">
-        <di:waypoint x="4123" y="1320" />
-        <di:waypoint x="4158" y="1320" />
-        <di:waypoint x="4158" y="1155" />
-        <di:waypoint x="4193" y="1155" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f34_M_H_di" bpmnElement="f34_M_H">
-        <di:waypoint x="4123" y="1320" />
-        <di:waypoint x="4158" y="1320" />
-        <di:waypoint x="4158" y="1265" />
-        <di:waypoint x="4193" y="1265" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f34_M_R_di" bpmnElement="f34_M_R">
-        <di:waypoint x="4123" y="1320" />
-        <di:waypoint x="4158" y="1320" />
-        <di:waypoint x="4158" y="1375" />
-        <di:waypoint x="4193" y="1375" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f34_M_S_di" bpmnElement="f34_M_S">
-        <di:waypoint x="4123" y="1320" />
-        <di:waypoint x="4158" y="1320" />
-        <di:waypoint x="4158" y="1485" />
-        <di:waypoint x="4193" y="1485" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f35_M_BASE_di" bpmnElement="f35_M_BASE">
-        <di:waypoint x="4353" y="1155" />
-        <di:waypoint x="4388" y="1155" />
-        <di:waypoint x="4388" y="1320" />
-        <di:waypoint x="4423" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f35_M_H_di" bpmnElement="f35_M_H">
-        <di:waypoint x="4353" y="1265" />
-        <di:waypoint x="4388" y="1265" />
-        <di:waypoint x="4388" y="1320" />
-        <di:waypoint x="4423" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f35_M_R_di" bpmnElement="f35_M_R">
-        <di:waypoint x="4353" y="1375" />
-        <di:waypoint x="4388" y="1375" />
-        <di:waypoint x="4388" y="1320" />
-        <di:waypoint x="4423" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f35_M_S_di" bpmnElement="f35_M_S">
-        <di:waypoint x="4353" y="1485" />
-        <di:waypoint x="4388" y="1485" />
-        <di:waypoint x="4388" y="1320" />
-        <di:waypoint x="4423" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f36_di" bpmnElement="f36">
-        <di:waypoint x="4473" y="1320" />
-        <di:waypoint x="4518" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f37_di" bpmnElement="f37">
-        <di:waypoint x="4678" y="1320" />
-        <di:waypoint x="4718" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f38_di" bpmnElement="f38">
-        <di:waypoint x="4878" y="1320" />
-        <di:waypoint x="4923" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f39_di" bpmnElement="f39">
-        <di:waypoint x="4948" y="1345" />
-        <di:waypoint x="4948" y="1550" />
-        <di:waypoint x="3748" y="1550" />
-        <di:waypoint x="3748" y="1365" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="4737" y="1529" width="181" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f40_di" bpmnElement="f40">
-        <di:waypoint x="4973" y="1320" />
-        <di:waypoint x="5018" y="1320" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="4982" y="1303" width="14" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f41_di" bpmnElement="f41">
-        <di:waypoint x="5068" y="1320" />
-        <di:waypoint x="5113" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f42_di" bpmnElement="f42">
-        <di:waypoint x="5043" y="1345" />
-        <di:waypoint x="5043" y="1635" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f43_di" bpmnElement="f43">
-        <di:waypoint x="5273" y="1320" />
-        <di:waypoint x="5318" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f44_di" bpmnElement="f44">
-        <di:waypoint x="5368" y="1320" />
-        <di:waypoint x="5413" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f45_di" bpmnElement="f45">
-        <di:waypoint x="5343" y="1345" />
-        <di:waypoint x="5343" y="1910" />
-        <di:waypoint x="5398" y="1910" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f46_di" bpmnElement="f46">
-        <di:waypoint x="5573" y="1320" />
-        <di:waypoint x="5618" y="1320" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f47_di" bpmnElement="f47">
-        <di:waypoint x="5643" y="1295" />
-        <di:waypoint x="5643" y="1240" />
-        <di:waypoint x="5493" y="1240" />
-        <di:waypoint x="5493" y="1275" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5650" y="1273" width="19" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f48_di" bpmnElement="f48">
-        <di:waypoint x="5643" y="1345" />
-        <di:waypoint x="5643" y="1635" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5650" y="1350" width="14" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f49_di" bpmnElement="f49">
-        <di:waypoint x="3773" y="1660" />
-        <di:waypoint x="5018" y="1660" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f50_di" bpmnElement="f50">
-        <di:waypoint x="5068" y="1660" />
-        <di:waypoint x="5113" y="1660" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f51_di" bpmnElement="f51">
-        <di:waypoint x="5273" y="1660" />
-        <di:waypoint x="5378" y="1660" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f52_di" bpmnElement="f52">
-        <di:waypoint x="5538" y="1660" />
-        <di:waypoint x="5618" y="1660" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f53_di" bpmnElement="f53">
-        <di:waypoint x="5668" y="1660" />
-        <di:waypoint x="5713" y="1660" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f54_di" bpmnElement="f54">
-        <di:waypoint x="5873" y="1660" />
-        <di:waypoint x="5918" y="1660" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f55_di" bpmnElement="f55">
-        <di:waypoint x="5448" y="1910" />
-        <di:waypoint x="5493" y="1910" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5457" y="1893" width="14" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f56_di" bpmnElement="f56">
-        <di:waypoint x="5423" y="1935" />
-        <di:waypoint x="5423" y="1992" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5430" y="1940" width="19" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f57_di" bpmnElement="f57">
-        <di:waypoint x="5653" y="1910" />
-        <di:waypoint x="5693" y="1910" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f58_di" bpmnElement="f58">
-        <di:waypoint x="5853" y="1910" />
-        <di:waypoint x="5893" y="1910" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="f59_di" bpmnElement="f59">
-        <di:waypoint x="6053" y="1910" />
-        <di:waypoint x="6098" y="1910" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="as_A1_di" bpmnElement="as_A1">
-        <di:waypoint x="1733" y="600" />
-        <di:waypoint x="1800.5" y="556" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="as_A2_di" bpmnElement="as_A2">
-        <di:waypoint x="2008" y="930" />
-        <di:waypoint x="2150" y="875" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="as_A3_di" bpmnElement="as_A3">
-        <di:waypoint x="4798" y="1365" />
-        <di:waypoint x="4898" y="1423" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="as_A4_di" bpmnElement="as_A4">
-        <di:waypoint x="5493" y="1275" />
-        <di:waypoint x="5332" y="1167" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="P_org_di" bpmnElement="P_org" isHorizontal="true">
-        <dc:Bounds x="160" y="80" width="6124" height="70" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="da1_di" bpmnElement="da1">
-        <di:waypoint x="308" y="365" />
-        <di:waypoint x="408" y="325" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="da2_di" bpmnElement="da2">
-        <di:waypoint x="508" y="365" />
-        <di:waypoint x="408" y="325" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="da3_di" bpmnElement="da3">
-        <di:waypoint x="1008" y="325" />
-        <di:waypoint x="1008" y="365" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="da4_di" bpmnElement="da4">
-        <di:waypoint x="2913" y="690" />
-        <di:waypoint x="2913" y="730" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="da5_di" bpmnElement="da5">
-        <di:waypoint x="3413" y="690" />
-        <di:waypoint x="3413" y="730" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="da6_di" bpmnElement="da6">
-        <di:waypoint x="5493" y="1365" />
-        <di:waypoint x="5493" y="1405" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="da7_di" bpmnElement="da7">
-        <di:waypoint x="5193" y="1705" />
-        <di:waypoint x="5193" y="1735" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="da8_di" bpmnElement="da8">
-        <di:waypoint x="5458" y="1705" />
-        <di:waypoint x="5458" y="1735" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="da9_di" bpmnElement="da9">
-        <di:waypoint x="5793" y="1705" />
-        <di:waypoint x="5793" y="1735" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="m1_di" bpmnElement="m1">
-        <di:waypoint x="270" y="150" />
-        <di:waypoint x="270" y="262" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="291" y="158" width="304" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="m2_di" bpmnElement="m2">
-        <di:waypoint x="5936" y="1642" />
-        <di:waypoint x="5936" y="150" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5679" y="158" width="216" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="m3_di" bpmnElement="m3">
-        <di:waypoint x="6116" y="1892" />
-        <di:waypoint x="6116" y="150" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="5986" y="158" width="103" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-    </bpmndi:BPMNPlane>
-  </bpmndi:BPMNDiagram>
+  <bpmn:dataStore id="DS_grid" name="base_grid_clean.csv" />
+  <bpmndi:BPMNDiagram id="Diagram_1"><bpmndi:BPMNPlane id="Plane_1" bpmnElement="Collab_1">
+    <bpmndi:BPMNShape id="P_org_di" bpmnElement="P_org" isHorizontal="true"><dc:Bounds x="160" y="30" width="4745" height="90" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="P_main_di" bpmnElement="P_main" isHorizontal="true"><dc:Bounds x="160" y="170" width="4745" height="1200" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="L0_di" bpmnElement="L0" isHorizontal="true" bioc:fill="#e3f2fd" color:background-color="#e3f2fd"><dc:Bounds x="190" y="170" width="4715" height="240" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="L1_di" bpmnElement="L1" isHorizontal="true" bioc:fill="#e8f5e9" color:background-color="#e8f5e9"><dc:Bounds x="190" y="410" width="4715" height="240" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="L2_di" bpmnElement="L2" isHorizontal="true" bioc:fill="#fff3e0" color:background-color="#fff3e0"><dc:Bounds x="190" y="650" width="4715" height="240" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="L3_di" bpmnElement="L3" isHorizontal="true" bioc:fill="#f3e5f5" color:background-color="#f3e5f5"><dc:Bounds x="190" y="890" width="4715" height="240" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="L4_di" bpmnElement="L4" isHorizontal="true" bioc:fill="#eceff1" color:background-color="#eceff1"><dc:Bounds x="190" y="1130" width="4715" height="240" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="Start_di" bpmnElement="Start" bioc:stroke="#1e88e5" bioc:fill="#ffffff" color:border-color="#1e88e5" color:background-color="#ffffff"><dc:Bounds x="282.0" y="272.0" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="235.0" y="314.0" width="130" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="T_load_di" bpmnElement="T_load" bioc:stroke="#1e88e5" bioc:fill="#ffffff" color:border-color="#1e88e5" color:background-color="#ffffff"><dc:Bounds x="425.0" y="240.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="T_clean_di" bpmnElement="T_clean" bioc:stroke="#1e88e5" bioc:fill="#ffffff" color:border-color="#1e88e5" color:background-color="#ffffff"><dc:Bounds x="640.0" y="240.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="T_grid_di" bpmnElement="T_grid" bioc:stroke="#1e88e5" bioc:fill="#ffffff" color:border-color="#1e88e5" color:background-color="#ffffff"><dc:Bounds x="855.0" y="240.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="A_eda_di" bpmnElement="A_eda" bioc:stroke="#43a047" bioc:fill="#ffffff" color:border-color="#43a047" color:background-color="#ffffff"><dc:Bounds x="1070.0" y="480.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="A_stock_di" bpmnElement="A_stock" bioc:stroke="#43a047" bioc:fill="#ffffff" color:border-color="#43a047" color:background-color="#ffffff"><dc:Bounds x="1285.0" y="480.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="A_conc_di" bpmnElement="A_conc" bioc:stroke="#43a047" bioc:fill="#ffffff" color:border-color="#43a047" color:background-color="#ffffff"><dc:Bounds x="1500.0" y="480.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="M_base_di" bpmnElement="M_base" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="1715.0" y="720.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="M_feat_di" bpmnElement="M_feat" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="1930.0" y="720.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="M_train_di" bpmnElement="M_train" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="2145.0" y="720.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="M_thr_di" bpmnElement="M_thr" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="2360.0" y="720.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="M_season_di" bpmnElement="M_season" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="2575.0" y="720.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="G_q_di" bpmnElement="G_q" isMarkerVisible="true" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="2855.0" y="745.0" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="2815.0" y="699.0" width="130" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="M_final_di" bpmnElement="M_final" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="3005.0" y="720.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="M_sub_di" bpmnElement="M_sub" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="3220.0" y="720.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="G_v_di" bpmnElement="G_v" isMarkerVisible="true" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="3500.0" y="745.0" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="3460.0" y="699.0" width="130" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="M_art_di" bpmnElement="M_art" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="3650.0" y="720.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="PG_di" bpmnElement="PG" bioc:stroke="#fb8c00" bioc:fill="#ffffff" color:border-color="#fb8c00" color:background-color="#ffffff"><dc:Bounds x="3930.0" y="745.0" width="50" height="50" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="D_desc_di" bpmnElement="D_desc" bioc:stroke="#8e24aa" bioc:fill="#ffffff" color:border-color="#8e24aa" color:background-color="#ffffff"><dc:Bounds x="4080.0" y="960.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="D_pres_di" bpmnElement="D_pres" bioc:stroke="#8e24aa" bioc:fill="#ffffff" color:border-color="#8e24aa" color:background-color="#ffffff"><dc:Bounds x="4295.0" y="960.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="D_zip_di" bpmnElement="D_zip" bioc:stroke="#8e24aa" bioc:fill="#ffffff" color:border-color="#8e24aa" color:background-color="#ffffff"><dc:Bounds x="4510.0" y="960.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="End_docs_di" bpmnElement="End_docs" bioc:stroke="#8e24aa" bioc:fill="#ffffff" color:border-color="#8e24aa" color:background-color="#ffffff"><dc:Bounds x="4797.0" y="992.0" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="4750.0" y="1034.0" width="130" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="K1_di" bpmnElement="K1" bioc:stroke="#546e7a" bioc:fill="#ffffff" color:border-color="#546e7a" color:background-color="#ffffff"><dc:Bounds x="4080.0" y="1200.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="K2_di" bpmnElement="K2" bioc:stroke="#546e7a" bioc:fill="#ffffff" color:border-color="#546e7a" color:background-color="#ffffff"><dc:Bounds x="4295.0" y="1200.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="K3_di" bpmnElement="K3" bioc:stroke="#546e7a" bioc:fill="#ffffff" color:border-color="#546e7a" color:background-color="#ffffff"><dc:Bounds x="4510.0" y="1200.0" width="180" height="100" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="End_star_di" bpmnElement="End_star" bioc:stroke="#546e7a" bioc:fill="#ffffff" color:border-color="#546e7a" color:background-color="#ffffff"><dc:Bounds x="4797.0" y="1232.0" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="4750.0" y="1274.0" width="130" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="f_Start_T_load_di" bpmnElement="f_Start_T_load"><di:waypoint x="318.0" y="290" /><di:waypoint x="425.0" y="290" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_T_load_T_clean_di" bpmnElement="f_T_load_T_clean"><di:waypoint x="605.0" y="290" /><di:waypoint x="640.0" y="290" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_T_clean_T_grid_di" bpmnElement="f_T_clean_T_grid"><di:waypoint x="820.0" y="290" /><di:waypoint x="855.0" y="290" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_T_grid_A_eda_di" bpmnElement="f_T_grid_A_eda"><di:waypoint x="1035.0" y="290" /><di:waypoint x="1052.5" y="290" /><di:waypoint x="1052.5" y="530" /><di:waypoint x="1070.0" y="530" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_A_eda_A_stock_di" bpmnElement="f_A_eda_A_stock"><di:waypoint x="1250.0" y="530" /><di:waypoint x="1285.0" y="530" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_A_stock_A_conc_di" bpmnElement="f_A_stock_A_conc"><di:waypoint x="1465.0" y="530" /><di:waypoint x="1500.0" y="530" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_A_conc_M_base_di" bpmnElement="f_A_conc_M_base"><di:waypoint x="1680.0" y="530" /><di:waypoint x="1697.5" y="530" /><di:waypoint x="1697.5" y="770" /><di:waypoint x="1715.0" y="770" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_M_base_M_feat_di" bpmnElement="f_M_base_M_feat"><di:waypoint x="1895.0" y="770" /><di:waypoint x="1930.0" y="770" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_M_feat_M_train_di" bpmnElement="f_M_feat_M_train"><di:waypoint x="2110.0" y="770" /><di:waypoint x="2145.0" y="770" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_M_train_M_thr_di" bpmnElement="f_M_train_M_thr"><di:waypoint x="2325.0" y="770" /><di:waypoint x="2360.0" y="770" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_M_thr_M_season_di" bpmnElement="f_M_thr_M_season"><di:waypoint x="2540.0" y="770" /><di:waypoint x="2575.0" y="770" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_M_season_G_q_di" bpmnElement="f_M_season_G_q"><di:waypoint x="2755.0" y="770" /><di:waypoint x="2855.0" y="770" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_G_q_M_final_di" bpmnElement="f_G_q_M_final"><di:waypoint x="2905.0" y="770" /><di:waypoint x="3005.0" y="770" /><bpmndi:BPMNLabel><dc:Bounds x="2911.0" y="774" width="30" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_G_q_M_feat_di" bpmnElement="f_G_q_M_feat"><di:waypoint x="2880" y="795.0" /><di:waypoint x="2880" y="860.0" /><di:waypoint x="2020" y="860.0" /><di:waypoint x="2020" y="820.0" /><bpmndi:BPMNLabel><dc:Bounds x="2886" y="840.0" width="30" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_M_final_M_sub_di" bpmnElement="f_M_final_M_sub"><di:waypoint x="3185.0" y="770" /><di:waypoint x="3220.0" y="770" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_M_sub_G_v_di" bpmnElement="f_M_sub_G_v"><di:waypoint x="3400.0" y="770" /><di:waypoint x="3500.0" y="770" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_G_v_M_art_di" bpmnElement="f_G_v_M_art"><di:waypoint x="3550.0" y="770" /><di:waypoint x="3650.0" y="770" /><bpmndi:BPMNLabel><dc:Bounds x="3556.0" y="774" width="30" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_G_v_M_final_di" bpmnElement="f_G_v_M_final"><di:waypoint x="3525" y="795.0" /><di:waypoint x="3525" y="860.0" /><di:waypoint x="3095" y="860.0" /><di:waypoint x="3095" y="820.0" /><bpmndi:BPMNLabel><dc:Bounds x="3531" y="840.0" width="30" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_M_art_PG_di" bpmnElement="f_M_art_PG"><di:waypoint x="3830.0" y="770" /><di:waypoint x="3930.0" y="770" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_PG_D_desc_di" bpmnElement="f_PG_D_desc"><di:waypoint x="3955" y="795.0" /><di:waypoint x="3955" y="1010" /><di:waypoint x="4080.0" y="1010" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_PG_K1_di" bpmnElement="f_PG_K1"><di:waypoint x="3955" y="795.0" /><di:waypoint x="3955" y="1250" /><di:waypoint x="4080.0" y="1250" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_D_desc_D_pres_di" bpmnElement="f_D_desc_D_pres"><di:waypoint x="4260.0" y="1010" /><di:waypoint x="4295.0" y="1010" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_D_pres_D_zip_di" bpmnElement="f_D_pres_D_zip"><di:waypoint x="4475.0" y="1010" /><di:waypoint x="4510.0" y="1010" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_D_zip_End_docs_di" bpmnElement="f_D_zip_End_docs"><di:waypoint x="4690.0" y="1010" /><di:waypoint x="4797.0" y="1010" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_K1_K2_di" bpmnElement="f_K1_K2"><di:waypoint x="4260.0" y="1250" /><di:waypoint x="4295.0" y="1250" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_K2_K3_di" bpmnElement="f_K2_K3"><di:waypoint x="4475.0" y="1250" /><di:waypoint x="4510.0" y="1250" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="f_K3_End_star_di" bpmnElement="f_K3_End_star"><di:waypoint x="4690.0" y="1250" /><di:waypoint x="4797.0" y="1250" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNShape id="DO_raw_di" bpmnElement="DO_raw_ref"><dc:Bounds x="497.0" y="168.0" width="36" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="537.0" y="178.0" width="160" height="30" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="dia_DO_raw_di" bpmnElement="dia_DO_raw"><di:waypoint x="515" y="218.0" /><di:waypoint x="515" y="240.0" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNShape id="DS_grid_di" bpmnElement="DS_grid_ref"><dc:Bounds x="920.0" y="168.0" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="974.0" y="178.0" width="160" height="30" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="doa_DS_grid_di" bpmnElement="doa_DS_grid"><di:waypoint x="945" y="240.0" /><di:waypoint x="945" y="218.0" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNShape id="DO_seg_di" bpmnElement="DO_seg_ref"><dc:Bounds x="1142.0" y="408.0" width="36" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1182.0" y="418.0" width="160" height="30" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="doa_DO_seg_di" bpmnElement="doa_DO_seg"><di:waypoint x="1160" y="480.0" /><di:waypoint x="1160" y="458.0" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNShape id="DO_model_di" bpmnElement="DO_model_ref"><dc:Bounds x="3722.0" y="648.0" width="36" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="3762.0" y="658.0" width="160" height="30" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="doa_DO_model_di" bpmnElement="doa_DO_model"><di:waypoint x="3740" y="720.0" /><di:waypoint x="3740" y="698.0" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNShape id="DO_sub_di" bpmnElement="DO_sub_ref"><dc:Bounds x="3292.0" y="648.0" width="36" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="3332.0" y="658.0" width="160" height="30" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="doa_DO_sub_di" bpmnElement="doa_DO_sub"><di:waypoint x="3310" y="720.0" /><di:waypoint x="3310" y="698.0" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNShape id="DO_doc_di" bpmnElement="DO_doc_ref"><dc:Bounds x="4152.0" y="888.0" width="36" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="4192.0" y="898.0" width="160" height="30" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="doa_DO_doc_di" bpmnElement="doa_DO_doc"><di:waypoint x="4170" y="960.0" /><di:waypoint x="4170" y="938.0" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNShape id="DO_pres_di" bpmnElement="DO_pres_ref"><dc:Bounds x="4367.0" y="888.0" width="36" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="4407.0" y="898.0" width="160" height="30" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="doa_DO_pres_di" bpmnElement="doa_DO_pres"><di:waypoint x="4385" y="960.0" /><di:waypoint x="4385" y="938.0" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNShape id="A_1_di" bpmnElement="A_1"><dc:Bounds x="2730.0" y="531.0" width="300" height="78" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="as_A_1_di" bpmnElement="as_A_1"><di:waypoint x="2880" y="745.0" /><di:waypoint x="2880" y="609.0" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNShape id="A_2_di" bpmnElement="A_2"><dc:Bounds x="2515.0" y="920" width="300" height="78" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="as_A_2_di" bpmnElement="as_A_2"><di:waypoint x="2665" y="820.0" /><di:waypoint x="2665" y="920" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNShape id="A_3_di" bpmnElement="A_3"><dc:Bounds x="1765.0" y="531.0" width="300" height="78" /></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="as_A_3_di" bpmnElement="as_A_3"><di:waypoint x="1805" y="720.0" /><di:waypoint x="1805" y="609.0" /></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="m1_di" bpmnElement="m1"><di:waypoint x="300" y="120" /><di:waypoint x="300" y="272.0" /><bpmndi:BPMNLabel><dc:Bounds x="308" y="128" width="110" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="m2_di" bpmnElement="m2"><di:waypoint x="4815" y="992.0" /><di:waypoint x="4815" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="4687" y="128" width="120" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="m3_di" bpmnElement="m3"><di:waypoint x="4833.0" y="1250" /><di:waypoint x="4875" y="1250" /><di:waypoint x="4875" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="4883" y="128" width="110" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 </bpmn:definitions>
