@@ -8,16 +8,12 @@ def load_raw_data(sales_path: str, stock_path: str) -> tuple[pd.DataFrame, pd.Da
 
 
 def clean_stock(df_stock: pd.DataFrame) -> pd.DataFrame:
-    """Очищает остатки: удаляет дубликаты, суммирует партии и зануляет минусы."""
+    """Очищает остатки: суммирует партии """
     keys = ["date", "warehouse_name", "article"]
     
-    # Удаление полных дубликатов
-    df_stock_clean = df_stock.drop_duplicates(
-        subset=["date", "warehouse_name", "article", "stock"]
-    ).copy()
     
     # Агрегация остатков
-    df_stock_clean = df_stock_clean.groupby(
+    df_stock_clean = df_stock.groupby(
         keys, as_index=False
     ).agg(
         stock=("stock", "sum")
