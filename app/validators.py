@@ -32,8 +32,8 @@ def validate_sales_csv(df: pd.DataFrame) -> List[str]:
     if history_days < MIN_HISTORY_DAYS:
         errors.append(f"Недостаточно истории в sales: {history_days} дней, минимум {MIN_HISTORY_DAYS}")
 
-    # Null в discount_sum означает отсутствие скидки и заменяется нулём.
-    df["discount_sum"] = df["discount_sum"].fillna(0)
+    # Null в discount_sum означает отсутствие скидки. Здесь его не трогаем: discount_sum хранится как np.log,
+    # и замена null на 0 означала бы скидку exp(0) = 1. Null обрабатывается в src/data.py (скидка = 0).
 
     quantity = pd.to_numeric(df["quantity"], errors="coerce")
     if quantity.isna().any():
@@ -46,6 +46,10 @@ def validate_sales_csv(df: pd.DataFrame) -> List[str]:
 
 def validate_stock_csv(df: pd.DataFrame) -> List[str]:
     errors = []
+    # По ТЗ колонка артикула в stock — char_article; в выданном обучающем файле она называется article.
+    # Принимаем оба варианта.
+    if "char_article" not in df.columns and "article" in df.columns:
+        df.rename(columns={"article": "char_article"}, inplace=True)
     missing = set(STOCK_REQUIRED_COLS) - set(df.columns)
     if missing:
         errors.append(f"Отсутствуют колонки в stock: {sorted(missing)}")

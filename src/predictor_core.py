@@ -1,42 +1,40 @@
-"""Предсказание по матрицам последних 180 дней (недельный прогноз).
+"""Инференс итоговой модели v6 по сырым sales/stock (ядро для app/predictor.py).
 
-Контракт: на вход матрицы продаж и остатков (серии x 180 дней, NaN = данных нет),
-названия складов и артикулов каждой серии. На выходе матрица прогноза (серии x 9 недель):
-плоский недельный прогноз с учётом порога обнуления и масштаба из config.json.
+Контракт: на вход сырые DataFrame sales и stock (формат обучающих CSV), на выход DataFrame в формате submission
+(week, warehouse_name, article, quantity) по всем 11 × 799 парам из config.json — 79 101 строка.
+Первая неделя — понедельник календарной недели, следующей за неделей последней даты в sales.
 """
 import json
 from pathlib import Path
 
 import lightgbm as lgb
 import numpy as np
+import pandas as pd
 
-from . import features
+from .data import build_arrays, build_meta
+from .model import predict
 
 
 def load_artifacts(model_dir):
     model_dir = Path(model_dir)
     cfg = json.loads((model_dir / "config.json").read_text(encoding="utf-8"))
-    booster = lgb.Booster(model_file=str(model_dir / "model.txt"))
-    return {"cfg": cfg, "booster": booster}
+    boosters = {k: lgb.Booster(model_file=str(model_dir / f)) for k, f in cfg["model_files"].items()}
+    meta = build_meta(cfg["warehouses"], cfg["articles"], cfg["article_cat1"], cfg["article_cat2"],
+                      cfg["cat1_levels"], cfg["cat2_levels"])
+    return {"cfg": cfg, "boosters": boosters, "meta": meta}
 
 
-def predict_from_arrays(Qw, STw, warehouses, articles, art):
-    cfg = art["cfg"]
-    window = cfg["window"]
-    if Qw.shape[1] != window or STw.shape[1] != window:
-        raise ValueError(f"Нужно ровно {window} дней, получено {Qw.shape[1]}")
-
-    wh_index = {n: i for i, n in enumerate(cfg["warehouses"])}
-    cat_index = {n: i for i, n in enumerate(cfg["categories"])}
-    unknown = cat_index.get("unknown", -1)
-    wh_code = np.array([wh_index.get(w, -1) for w in warehouses])
-    cat_code = np.array([cat_index.get(cfg["article_category"].get(a, "unknown"), unknown)
-                         for a in articles])
-
-    Q0 = np.nan_to_num(Qw)
-    first_idx = np.argmax(~np.isnan(Qw), axis=1)
-    X = features.build_features(Q0, STw, window - 1, first_idx, wh_code, cat_code)
-
-    rate = np.clip(art["booster"].predict(X), 0, None) * cfg["scale"]
-    rate = np.where(rate < cfg["threshold"], 0.0, rate)
-    return np.repeat(rate[:, None], cfg["weeks"], axis=1)
+def forecast(df_sales, df_stock, art):
+    cfg, meta = art["cfg"], art["meta"]
+    Q, ST, SV, DV, d0, last_date = build_arrays(df_sales, df_stock, meta)
+    weekly, info = predict(art["boosters"], Q, ST, SV, DV, meta, d0)
+    first_week = last_date - pd.Timedelta(days=last_date.weekday()) + pd.Timedelta(days=7)
+    weeks = pd.date_range(first_week, periods=cfg["weeks"], freq="7D").strftime("%Y-%m-%d")
+    df = pd.DataFrame({
+        "week": np.tile(weeks, len(meta)),
+        "warehouse_name": np.repeat(meta.warehouse_name.astype(str).values, cfg["weeks"]),
+        "article": np.repeat(meta.article.astype(str).values, cfg["weeks"]),
+        "quantity": np.repeat(weekly, cfg["weeks"]).astype(int),
+    })
+    info["history_days"] = int((last_date - pd.to_datetime(df_sales["date"]).min()).days) + 1
+    return df, info

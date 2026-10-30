@@ -55,4 +55,33 @@ echo "HTTP $CODE (ожидается 400)"
 [ "$CODE" = "400" ]
 echo
 
+echo "=== 9. Error: пустой файл (ожидается 400) ==="
+: > /tmp/empty.csv
+CODE=$(curl -s -o /tmp/err.json -w "%{http_code}" -X POST "$BASE_URL/predict" -F "sales=@/tmp/empty.csv" -F "stock=@data/sample_stock.csv")
+echo "HTTP $CODE: $(cat /tmp/err.json)"
+[ "$CODE" = "400" ]
+echo
+
+echo "=== 10. Error: история меньше 180 дней (ожидается 422) ==="
+head -1 data/sample_sales.csv > /tmp/short_sales.csv
+grep "^2026-07-2" data/sample_sales.csv >> /tmp/short_sales.csv
+CODE=$(curl -s -o /tmp/err.json -w "%{http_code}" -X POST "$BASE_URL/predict" -F "sales=@/tmp/short_sales.csv" -F "stock=@data/sample_stock.csv")
+echo "HTTP $CODE: $(cat /tmp/err.json)"
+[ "$CODE" = "422" ]
+echo
+
+echo "=== 11. Error: отрицательный quantity (ожидается 422) ==="
+awk -F, 'BEGIN{OFS=","} NR==2{$10="-1"} {print}' data/sample_sales.csv > /tmp/neg_sales.csv
+CODE=$(curl -s -o /tmp/err.json -w "%{http_code}" -X POST "$BASE_URL/predict" -F "sales=@/tmp/neg_sales.csv" -F "stock=@data/sample_stock.csv")
+echo "HTTP $CODE: $(cat /tmp/err.json)"
+[ "$CODE" = "422" ]
+echo
+
+echo "=== 12. Отрицательный stock допустим (ожидается 200) ==="
+awk -F, 'BEGIN{OFS=","} NR==2{$4="-5"} {print}' data/sample_stock.csv > /tmp/neg_stock.csv
+CODE=$(curl -s -o /tmp/forecast_neg.csv -w "%{http_code}" -X POST "$BASE_URL/predict" -F "sales=@data/sample_sales.csv" -F "stock=@/tmp/neg_stock.csv")
+echo "HTTP $CODE"
+[ "$CODE" = "200" ]
+echo
+
 echo "=== Все тесты пройдены! ==="
