@@ -1,9 +1,11 @@
 .git
 .gitignore
-notebooks/
-docs/
-data/raw/
+.ipynb_checkpoints/
+.venv/
 __pycache__/
 *.pyc
-.venv/
-.ipynb_checkpoints/
+notebooks/
+docs/
+data/
+tests/
+*.csv

@@ -1,7 +1,8 @@
-"""Предсказание по массивам последних 180 дней. Это ядро для predictor.py в контейнере.
+"""Предсказание по матрицам последних 180 дней (недельный прогноз).
 
 Контракт: на вход матрицы продаж и остатков (серии x 180 дней, NaN = данных нет),
-названия складов и артикулов каждой серии. На выходе матрица прогноза (серии x 64 дня).
+названия складов и артикулов каждой серии. На выходе матрица прогноза (серии x 9 недель):
+плоский недельный прогноз с учётом порога обнуления и масштаба из config.json.
 """
 import json
 from pathlib import Path
@@ -38,4 +39,4 @@ def predict_from_arrays(Qw, STw, warehouses, articles, art):
 
     rate = np.clip(art["booster"].predict(X), 0, None) * cfg["scale"]
     rate = np.where(rate < cfg["threshold"], 0.0, rate)
-    return np.repeat(rate[:, None], cfg["horizon"], axis=1)
+    return np.repeat(rate[:, None], cfg["weeks"], axis=1)
