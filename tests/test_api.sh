@@ -84,4 +84,16 @@ echo "HTTP $CODE"
 [ "$CODE" = "200" ]
 echo
 
+echo "=== 13. Веб-интерфейс GET / (ожидается 200) ==="
+CODE=$(curl -s -o /tmp/index.html -w "%{http_code}" "$BASE_URL/")
+echo "HTTP $CODE"
+[ "$CODE" = "200" ] && grep -q "Построить прогноз" /tmp/index.html
+echo
+
+echo "=== 14. Error: неверный формат cutoff (ожидается 422) ==="
+CODE=$(curl -s -o /tmp/err.json -w "%{http_code}" -X POST "$BASE_URL/predict?cutoff=26.07.2026" -F "sales=@data/sample_sales.csv" -F "stock=@data/sample_stock.csv")
+echo "HTTP $CODE: $(cat /tmp/err.json)"
+[ "$CODE" = "422" ]
+echo
+
 echo "=== Все тесты пройдены! ==="

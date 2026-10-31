@@ -4,6 +4,46 @@
 с HTTP-API на FastAPI. В контейнере работает итоговая модель **v6** — та же, что дала основной submission:
 на полных данных по 2026-07-26 контейнер выдаёт файл, совпадающий с `data/submission_weekly_v6.csv` байт в байт.
 
+## Быстрый старт
+
+Нужен только [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/macOS) или Docker (Linux).
+
+**Windows** — дважды щёлкните `start.bat`. Откроется меню:
+
+```
+  1 - Запустить сервис (при первом запуске соберёт образ)
+  2 - Открыть веб-интерфейс в браузере
+  3 - Сделать прогноз из CSV-файлов (результат в папке results)
+  4 - Посмотреть прогноз по артикулу или складу
+  5 - Самопроверка
+  6 - Журнал контейнера
+  7 - Пересобрать образ (после изменения кода)
+  8 - Остановить сервис
+```
+
+Меню само проверяет, установлен и запущен ли Docker (если Docker Desktop не запущен — запускает его), собирает образ
+при первом запуске и ждёт готовности сервиса. В пункте 3 обучающие CSV ищутся рядом с репозиторием автоматически
+(или выбираются в обычном окне выбора файла); можно взять данные по 26.07.2026, как в основном submission, все даты
+или свою дату. Результат сохраняется в `results/forecast_<дата>.csv`, и меню сообщает, совпал ли он с основным submission.
+Если Windows предупредит о файле из интернета — «Подробнее» → «Выполнить в любом случае».
+
+**Linux / macOS** — `./start.sh` (то же меню).
+
+**Веб-интерфейс** — после запуска откройте http://localhost:8000/ : загрузите два CSV, нажмите «Построить прогноз»,
+скачайте файл и посмотрите прогноз по складу или артикулу. Для разработчиков — http://localhost:8000/docs.
+
+Команды без меню (для автоматизации):
+
+| Действие | Windows | Linux / macOS |
+|---|---|---|
+| запустить и открыть браузер | `start.bat start` | `./start.sh start` |
+| прогноз из файлов | `start.bat forecast` | `./start.sh forecast sales.csv stock.csv [2026-07-26\|all]` |
+| самопроверка | `start.bat test` | `./start.sh test` |
+| остановить | `start.bat stop` | `./start.sh stop` |
+
+Или через Docker Compose: `docker compose up -d --build` (остановка — `docker compose down`).
+Если порт 8000 занят, задайте другой: `set SBER_PORT=8001` (Windows) или `SBER_PORT=8001 ./start.sh`.
+
 ## Описание решения
 
 1. **Данные** (`src/data.py`). Продажи суммируются по департаментам и городам до уровня дата × склад × артикул.
@@ -46,10 +86,13 @@ bash tests/test_api.sh                      # самопроверка всех 
 
 | Метод | Путь | Что делает |
 |---|---|---|
+| GET | `/` | веб-интерфейс (загрузка файлов, скачивание прогноза, поиск по складу и артикулу) |
 | GET | `/health` | `{"status": "ok"}` |
-| POST | `/predict` | `multipart/form-data` с файлами `sales` и `stock` (формат обучающих CSV) → CSV-прогноз на 9 недель |
+| POST | `/predict` | `multipart/form-data` с файлами `sales` и `stock` (формат обучающих CSV) → CSV-прогноз на 9 недель; необязательный `?cutoff=YYYY-MM-DD` отбрасывает строки позже этой даты |
 | GET | `/predict?article=…&warehouse=…` | прогноз из последнего POST по артикулу и/или складу (хотя бы один параметр, иначе 400) |
 | GET | `/predict/all?format=csv\|json` | весь последний прогноз: 79 101 строка |
+| GET | `/status` | есть ли рассчитанный прогноз и сводка по нему (недели, число ненулевых рядов, сумма) |
+| GET | `/options` | списки складов и артикулов, по которым строится прогноз |
 
 - Ответ — CSV `week,warehouse_name,article,quantity`; `quantity` — целые штуки в неделю.
 - Первая неделя — понедельник календарной недели, следующей за неделей последней даты в `sales`
@@ -64,6 +107,8 @@ bash tests/test_api.sh                      # самопроверка всех 
 
 ```bash
 curl -X POST http://localhost:8000/predict -F "sales=@sales.csv" -F "stock=@stock.csv" -o forecast.csv
+# по полным обучающим файлам, но только по 26.07.2026 — тот же файл, что основной submission
+curl -X POST "http://localhost:8000/predict?cutoff=2026-07-26" -F "sales=@sales.csv" -F "stock=@stock.csv" -o forecast.csv
 curl "http://localhost:8000/predict?article=char_article_1&warehouse=warehouse_name_3"
 curl "http://localhost:8000/predict/all?format=csv" -o full_forecast.csv
 ```
@@ -80,14 +125,19 @@ python tests/test_parity.py data/raw/sales_dataset_hakaton_train.csv data/raw/st
 
 Обучение и инференс детерминированы (`deterministic=True`, seed 42): `src.train` воспроизводит файлы моделей
 и `data/submission_weekly_v6.csv` байт в байт. Проверено и через собранный образ: POST с данными по 2026-07-26
-возвращает тот же файл, `tests/test_api.sh` (12 проверок, включая ошибки 400/422) проходит.
+возвращает тот же файл, `tests/test_api.sh` (14 проверок, включая ошибки 400/422 и веб-интерфейс) проходит.
 
 ## Структура репозитория
 
 ```
+├── start.bat              # меню для Windows (вызывает scripts/menu.ps1)
+├── start.sh               # меню для Linux / macOS
+├── docker-compose.yml     # запуск одной командой: docker compose up -d --build
 ├── Dockerfile, requirements.txt, .dockerignore
+├── scripts/menu.ps1       # логика меню для Windows (PowerShell)
 ├── app/
-│   ├── main.py            # FastAPI: /health, POST и GET /predict, GET /predict/all
+│   ├── main.py            # FastAPI: /, /health, POST и GET /predict, GET /predict/all, /status, /options
+│   ├── static/index.html  # веб-интерфейс
 │   ├── predictor.py       # загрузка моделей при старте, прогноз, кэш для GET
 │   └── validators.py      # проверка входных CSV
 ├── src/

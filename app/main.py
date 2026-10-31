@@ -5,7 +5,7 @@ from typing import Optional
 import pandas as pd
 from fastapi import FastAPI, File, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from .predictor import NotReadyError, Predictor
 from .validators import validate_sales_csv, validate_stock_csv
@@ -18,6 +18,7 @@ app = FastAPI(
 
 # Модель загружается в память при старте контейнера
 predictor = Predictor.load(Path("model"))
+INDEX_HTML = Path(__file__).with_name("static").joinpath("index.html")
 
 
 class ApiError(Exception):
@@ -57,13 +58,55 @@ def cached_forecast() -> pd.DataFrame:
         raise ApiError(409, str(e), code="FORECAST_NOT_READY")
 
 
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def index():
+    """Простой веб-интерфейс: загрузка двух CSV, скачивание прогноза, поиск по артикулу и складу."""
+    return HTMLResponse(INDEX_HTML.read_text(encoding="utf-8"))
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
 
+@app.get("/options")
+async def options():
+    """Списки складов и артикулов, по которым строится прогноз (для подсказок в интерфейсе)."""
+    cfg = predictor.art["cfg"]
+    return {"warehouses": cfg["warehouses"], "articles": cfg["articles"]}
+
+
+@app.get("/status")
+async def status():
+    """Есть ли рассчитанный прогноз и краткая сводка по нему."""
+    try:
+        df = predictor.get_cached_forecast()
+    except NotReadyError:
+        return {"ready": False}
+    first = df[df["week"] == df["week"].min()]
+    return {
+        "ready": True,
+        "rows": int(len(df)),
+        "weeks": sorted(df["week"].unique().tolist()),
+        "series": int(len(first)),
+        "series_nonzero": int((first["quantity"] > 0).sum()),
+        "total_quantity": int(df["quantity"].sum()),
+        "history_days": predictor.last_info.get("history_days"),
+        "last_date": predictor.last_info.get("last_date"),
+    }
+
+
+def apply_cutoff(df: pd.DataFrame, cutoff: pd.Timestamp) -> pd.DataFrame:
+    return df[pd.to_datetime(df["date"], format="%Y-%m-%d") <= cutoff].reset_index(drop=True)
+
+
 @app.post("/predict")
-async def predict_post(sales: bytes = File(...), stock: bytes = File(...)):
+async def predict_post(
+    sales: bytes = File(...),
+    stock: bytes = File(...),
+    cutoff: Optional[str] = Query(None, description="Необязательно: последняя используемая дата YYYY-MM-DD "
+                                                    "(более поздние строки отбрасываются)"),
+):
     """Принимает два CSV (sales + stock) и возвращает CSV с прогнозом на 9 недель."""
     if not sales.strip() or not stock.strip():
         raise ApiError(400, "Пустой файл: нужны непустые sales и stock")
@@ -78,6 +121,18 @@ async def predict_post(sales: bytes = File(...), stock: bytes = File(...)):
     errors = validate_sales_csv(df_sales) + validate_stock_csv(df_stock)
     if errors:
         raise ApiError(422, "; ".join(errors))
+
+    if cutoff:
+        try:
+            cutoff_ts = pd.to_datetime(cutoff, format="%Y-%m-%d")
+        except Exception:
+            raise ApiError(422, "Неверный формат cutoff (ожидается YYYY-MM-DD)")
+        df_sales, df_stock = apply_cutoff(df_sales, cutoff_ts), apply_cutoff(df_stock, cutoff_ts)
+        if df_sales.empty or df_stock.empty:
+            raise ApiError(422, f"До даты {cutoff} в sales или stock нет данных")
+        errors = validate_sales_csv(df_sales) + validate_stock_csv(df_stock)
+        if errors:
+            raise ApiError(422, "; ".join(errors))
 
     df_forecast = predictor.predict(df_sales, df_stock)
     return csv_response(df_forecast, "forecast.csv")

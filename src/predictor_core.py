@@ -36,5 +36,6 @@ def forecast(df_sales, df_stock, art):
         "article": np.repeat(meta.article.astype(str).values, cfg["weeks"]),
         "quantity": np.repeat(weekly, cfg["weeks"]).astype(int),
     })
+    info["last_date"] = str(last_date.date())
     info["history_days"] = int((last_date - pd.to_datetime(df_sales["date"]).min()).days) + 1
     return df, info
