@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Прогноз продаж</title>
+<style>
+  :root {
+    --bg: #f4f5f2; --card: #ffffff; --ink: #1d2320; --muted: #66706a; --line: #dfe3dd;
+    --accent: #1f7a4d; --accent-ink: #ffffff; --soft: #e8f3ec; --err: #b3261e; --err-soft: #fbeaea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141816; --card: #1d2320; --ink: #e8ece9; --muted: #9aa49e; --line: #2f3833;
+      --accent: #4cc38a; --accent-ink: #0d1f15; --soft: #1f3328; --err: #ff8a80; --err-soft: #3a1f1d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 28px 16px 48px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 24px; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 4px 0 20px; }
+  .pill { font-size: 13px; padding: 3px 10px; border-radius: 99px; background: var(--soft); color: var(--accent); }
+  .pill.off { background: var(--err-soft); color: var(--err); }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  h2 { font-size: 17px; margin: 0 0 4px; display: flex; gap: 10px; align-items: center; }
+  .num { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+         background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 600; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+  label.drop { display: block; border: 1.5px dashed var(--line); border-radius: 10px; padding: 14px; cursor: pointer; }
+  label.drop:hover, label.drop.over { border-color: var(--accent); background: var(--soft); }
+  label.drop b { display: block; }
+  label.drop span { color: var(--muted); font-size: 13px; word-break: break-all; }
+  label.drop.ok span { color: var(--accent); }
+  input[type=file] { display: none; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+  input[type=date], input[type=text], select { font: inherit; color: var(--ink); background: var(--bg);
+         border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+  button, a.btn { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer;
+         background: var(--accent); color: var(--accent-ink); text-decoration: none; display: inline-block; }
+  button.ghost, a.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .msg { margin-top: 14px; padding: 10px 12px; border-radius: 8px; display: none; }
+  .msg.show { display: block; }
+  .msg.err { background: var(--err-soft); color: var(--err); }
+  .msg.info { background: var(--soft); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+  @media (max-width: 620px) { .stats { grid-template-columns: 1fr 1fr; } }
+  .stat { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .stat div { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .stat small { color: var(--muted); }
+  .filters { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+  @media (max-width: 620px) { .filters { grid-template-columns: 1fr; } }
+  .filters label { font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+  .tablewrap { overflow-x: auto; margin-top: 14px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; }
+  td.q { text-align: right; font-weight: 600; }
+  footer { color: var(--muted); font-size: 13px; text-align: center; }
+  footer a { color: var(--accent); }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent;
+          border-radius: 50%; animation: r .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes r { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Прогноз продаж на 9 недель</h1>
+    <span id="health" class="pill">проверяю сервис…</span>
+  </header>
+  <p class="sub">11 складов × 799 артикулов, модель v6 (команда «Авангард»). Всё считается внутри контейнера, данные никуда не отправляются.</p>
+
+  <section>
+    <h2><span class="num">1</span>Загрузите данные</h2>
+    <p class="hint">Два CSV в формате обучающих файлов: продажи и остатки. Можно перетащить файл на поле.</p>
+    <div class="grid">
+      <label class="drop" id="drop-sales"><input type="file" id="sales" accept=".csv,text/csv">
+        <b>Продажи (sales)</b><span>файл не выбран</span></label>
+      <label class="drop" id="drop-stock"><input type="file" id="stock" accept=".csv,text/csv">
+        <b>Остатки (stock)</b><span>файл не выбран</span></label>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="use-cutoff" checked> Использовать данные только по</label>
+      <input type="date" id="cutoff" value="2026-07-26">
+    </div>
+    <p class="hint" style="margin-top:6px">По 26.07.2026 — как в основном submission (прогноз с 27.07.2026). Снимите галочку, чтобы взять все даты из файлов.</p>
+    <div class="row">
+      <button id="run">Построить прогноз</button>
+      <a class="btn ghost" id="download" style="display:none">Скачать прогноз (CSV)</a>
+    </div>
+    <div id="msg1" class="msg"></div>
+    <div id="stats" class="stats" style="display:none"></div>
+  </section>
+
+  <section>
+    <h2><span class="num">2</span>Посмотрите прогноз по складу или артикулу</h2>
+    <p class="hint">Работает после шага 1. Выберите склад, артикул или оба.</p>
+    <div class="filters">
+      <label>Склад<select id="f-wh"><option value="">все склады</option></select></label>
+      <label>Артикул<input type="text" id="f-art" list="arts" placeholder="например, char_article_1"></label>
+      <button id="show" class="ghost">Показать</button>
+    </div>
+    <datalist id="arts"></datalist>
+    <div id="msg2" class="msg"></div>
+    <div class="tablewrap"><table id="tbl" style="display:none"></table></div>
+    <div class="row"><a class="btn ghost" id="download2" style="display:none">Скачать выборку (CSV)</a></div>
+  </section>
+
+  <footer>Для разработчиков: <a href="/docs">интерактивная документация API</a> · <a href="/predict/all?format=csv">весь последний прогноз</a></footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let blobUrl = null, blobUrl2 = null;
+
+function show(el, text, kind) { el.className = 'msg show ' + kind; el.innerHTML = text; }
+function hide(el) { el.className = 'msg'; }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+const fmt = (n) => Number(n).toLocaleString('ru-RU');
+const ruDate = (s) => s ? s.split('-').reverse().join('.') : '—';
+
+async function errorText(r) {
+  try { const j = await r.json(); return j.detail || JSON.stringify(j); } catch { return 'HTTP ' + r.status; }
+}
+
+async function checkHealth() {
+  try {
+    const r = await fetch('/health'); if (!r.ok) throw 0;
+    $('health').textContent = 'сервис работает'; $('health').className = 'pill';
+  } catch { $('health').textContent = 'сервис недоступен'; $('health').className = 'pill off'; }
+}
+
+async function loadOptions() {
+  try {
+    const o = await (await fetch('/options')).json();
+    $('f-wh').insertAdjacentHTML('beforeend', o.warehouses.map(w => `<option>${esc(w)}</option>`).join(''));
+    $('arts').innerHTML = o.articles.map(a => `<option value="${esc(a)}">`).join('');
+  } catch {}
+}
+
+async function loadStatus() {
+  try {
+    const s = await (await fetch('/status')).json();
+    if (!s.ready) return;
+    $('stats').style.display = '';
+    $('stats').innerHTML = [
+      [ruDate(s.weeks[0]).slice(0, 5) + ' – ' + ruDate(s.weeks[s.weeks.length - 1]), 'период прогноза (начала недель)'],
+      [fmt(s.series_nonzero) + ' из ' + fmt(s.series), 'пар склад × артикул с продажами'],
+      [fmt(s.total_quantity), 'штук за 9 недель, всего'],
+      [ruDate(s.last_date), 'последний день данных'],
+    ].map(([v, l]) => `<div class="stat"><div>${v}</div><small>${l}</small></div>`).join('');
+    $('download').href = '/predict/all?format=csv'; $('download').style.display = '';
+    $('download').removeAttribute('download');
+  } catch {}
+}
+
+for (const kind of ['sales', 'stock']) {
+  const input = $(kind), drop = $('drop-' + kind);
+  const update = () => {
+    const f = input.files[0];
+    drop.querySelector('span').textContent = f ? `${f.name} · ${(f.size / 1048576).toFixed(1)} МБ` : 'файл не выбран';
+    drop.classList.toggle('ok', !!f);
+  };
+  input.addEventListener('change', update);
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault(); drop.classList.remove('over');
+    if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; update(); }
+  });
+}
+
+$('use-cutoff').addEventListener('change', () => { $('cutoff').disabled = !$('use-cutoff').checked; });
+
+$('run').addEventListener('click', async () => {
+  const msg = $('msg1');
+  if (!$('sales').files[0] || !$('stock').files[0]) { show(msg, 'Выберите оба файла: продажи и остатки.', 'err'); return; }
+  const fd = new FormData();
+  fd.append('sales', $('sales').files[0]); fd.append('stock', $('stock').files[0]);
+  let url = '/predict';
+  if ($('use-cutoff').checked && $('cutoff').value) url += '?cutoff=' + encodeURIComponent($('cutoff').value);
+  $('run').disabled = true; $('download').style.display = 'none'; $('stats').style.display = 'none';
+  const t0 = Date.now();
+  const tick = () => show(msg, `<span class="spin"></span>Считаю прогноз… ${Math.round((Date.now() - t0) / 1000)} с (на полных данных обычно 30–60 с)`, 'info');
+  tick(); const timer = setInterval(tick, 1000);
+  try {
+    const r = await fetch(url, { method: 'POST', body: fd });
+    if (!r.ok) throw new Error(await errorText(r));
+    const blob = await r.blob();
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    blobUrl = URL.createObjectURL(blob);
+    clearInterval(timer);
+    show(msg, `Готово за ${Math.round((Date.now() - t0) / 1000)} с. Файл можно скачать кнопкой выше.`, 'info');
+    await loadStatus();
+    $('download').href = blobUrl; $('download').download = 'forecast.csv'; $('download').style.display = '';
+  } catch (e) {
+    clearInterval(timer); show(msg, 'Ошибка: ' + esc(e.message), 'err');
+  } finally { $('run').disabled = false; }
+});
+
+$('show').addEventListener('click', async () => {
+  const msg = $('msg2'), tbl = $('tbl');
+  const wh = $('f-wh').value, art = $('f-art').value.trim();
+  if (!wh && !art) { show(msg, 'Выберите склад или введите артикул.', 'err'); return; }
+  const q = new URLSearchParams(); if (art) q.set('article', art); if (wh) q.set('warehouse', wh);
+  hide(msg); tbl.style.display = 'none'; $('download2').style.display = 'none';
+  try {
+    const r = await fetch('/predict?' + q);
+    if (!r.ok) throw new Error(await errorText(r));
+    const text = await r.text();
+    const lines = text.trim().split(/\r?\n/).slice(1).map(l => l.split(','));
+    if (!lines.length || !lines[0][0]) { show(msg, 'Ничего не найдено: проверьте артикул и склад.', 'err'); return; }
+    const LIMIT = 300;
+    tbl.innerHTML = '<tr><th>Неделя с</th><th>Склад</th><th>Артикул</th><th style="text-align:right">Штук в неделю</th></tr>' +
+      lines.slice(0, LIMIT).map(c => `<tr><td>${ruDate(c[0])}</td><td>${esc(c[1])}</td><td>${esc(c[2])}</td><td class="q">${esc(c[3])}</td></tr>`).join('');
+    tbl.style.display = '';
+    const total = lines.reduce((s, c) => s + Number(c[3]), 0);
+    show(msg, `Строк: ${fmt(lines.length)}${lines.length > LIMIT ? ` (в таблице первые ${LIMIT})` : ''}. Сумма за 9 недель: ${fmt(total)} шт.`, 'info');
+    if (blobUrl2) URL.revokeObjectURL(blobUrl2);
+    blobUrl2 = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
+    $('download2').href = blobUrl2; $('download2').download = 'forecast_selection.csv'; $('download2').style.display = '';
+  } catch (e) { show(msg, 'Ошибка: ' + esc(e.message), 'err'); }
+});
+
+checkHealth(); loadOptions(); loadStatus();
+</script>
+</body>
+</html>
